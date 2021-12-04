@@ -37,20 +37,21 @@ def main():
 	from bokeh.models import Range1d
 	import numpy as np
 
-	file, column, points, rolling, likelihood = parse_cli()
+	file, column, points, average, likelihood = parse_cli()
 
 	df = pd.read_csv(file, usecols=[column, likelihood], header=2, nrows=points)
 	df.columns = ["Target", "Likelihood"]
 
 	df["Target"] = np.where((df.Likelihood <= 0.95), 0, df.Target)
 
-	rolling = df["Target"].rolling(window=rolling).mean()
+	rolling = df["Target"].rolling(window=average).mean()
+	rolling.drop(index=rolling.index[:int(average / 2)], axis=0, inplace=True)
 
 	plot = figure(title=f"Column {column}", x_axis_label='frame', y_axis_label='coordinate', plot_width=1800)
 	plot.y_range = Range1d(50, 150)
 
-	plot.line([x for x in range(0, len(df))], df["Target"].values.tolist(), legend_label="Line", line_width=2)
-	plot.line([x for x in range(0, len(df))], rolling.values.tolist(), legend_label="Moving Average", line_width=2, color="red")
+	plot.line([x for x in range(0, len(df))], df["Target"].values.tolist(), legend_label="Original data", line_width=2)
+	plot.line([x for x in range(0, len(df) - int(average / 2))], rolling.values.tolist(), legend_label=f"Moving Average {average} shifted left {int(average / 2)}", line_width=2, color="red")
 
 	show(plot)
 

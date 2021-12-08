@@ -73,7 +73,7 @@ def ellipse_fit(x, y):
         P_in       = R * np.matrix([X0, Y0]).T
         X0_in      = P_in[0, 0]
         Y0_in      = P_in[1, 0]
-       
+
         # pack ellipse into a structure
         return True, {
             'a'         : a,

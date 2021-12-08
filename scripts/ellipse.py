@@ -73,18 +73,20 @@ def ellipse_fit(x, y):
         P_in       = R * np.matrix([X0, Y0]).T
         X0_in      = P_in[0, 0]
         Y0_in      = P_in[1, 0]
-        # yapf: enable
+       
         # pack ellipse into a structure
         return True, {
-            'a': a,
-            'b': b,
-            'phi': orientation_rad,
-            'Y0': Y0,
-            'X0_in': X0_in,
-            'Y0_in': Y0_in,
-            'long_axis': long_axis,
+            'a'         : a,
+            'b'         : b,
+            'phi'       : orientation_rad,
+            'X0'        : X0,
+            'Y0'        : Y0,
+            'X0_in'     : X0_in,
+            'Y0_in'     : Y0_in,
+            'long_axis' : long_axis,
             'short_axis': short_axis,
         }
+        # yapf: enable
     else:
         return False, {}
 

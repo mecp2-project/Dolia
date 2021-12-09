@@ -1,6 +1,20 @@
 {
     "python.formatting.provider": "yapf",
     "cSpell.words": [
-        "yapf"
+        "bokeh",
+        "chdir",
+        "dname",
+        "inplace",
+        "iterrows",
+        "nrows",
+        "pyplot",
+        "quantile",
+        "rlong",
+        "rshort",
+        "sdds",
+        "tolist",
+        "xlabel",
+        "yapf",
+        "ylabel"
     ]
 }

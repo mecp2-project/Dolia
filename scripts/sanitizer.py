@@ -13,10 +13,12 @@ Inputs:
 		10. Verbosity for debugging.
 
 What it does:
-		This function reads CSV file, detects points with low likelihood and marks them as NaN.
-
-
-		
+		This function reads CSV file, detects points with low likelihood and marks them as NaN and get removed. 
+		Next, it tries to fit an ellipse (ellipse.py).
+		If ellipse is found -- data is written into table, If ellipse not found data are aremoved.
+		Ratios of radii that are not within threshold range get removed.
+		Sliding window removes last outliers.
+		Plotting.		
 """
 
 import os
@@ -54,8 +56,8 @@ def parse_cli():
 	parser = argparse.ArgumentParser(description="Sanitizer (drop low likelihood, compute ellipses, interpolate radius ratio outliers and center coordinates)")
 	parser.add_argument("--file", dest="file", type=lambda x: is_valid_file(parser, x), required=True, help="CSV file to read.")
 	parser.add_argument("--likelihood", dest="likelihood", type=lambda x: is_valid_percentile(parser, x), default=0.9, help="Likelihood threshold. Datapoints below this will be dropped.")
-	parser.add_argument("--min-percentile", dest="min_percentile", type=lambda x: is_valid_percentile(parser, x), default=0, help="Min. percentile. Datapoints below this percentile will be dropped.")
-	parser.add_argument("--max-percentile", dest="max_percentile", type=lambda x: is_valid_percentile(parser, x), default=1, help="Max. percentile. Datapoints above this percentile will be dropped.")
+	parser.add_argument("--min-percentile", dest="min_percentile", type=lambda x: is_valid_percentile(parser, x), default=0.05, help="Min. percentile. Datapoints below this percentile will be dropped.")
+	parser.add_argument("--max-percentile", dest="max_percentile", type=lambda x: is_valid_percentile(parser, x), default=0.99, help="Max. percentile. Datapoints above this percentile will be dropped.")
 	parser.add_argument("--radius-max-percentile", dest="radius_max_percentile", type=lambda x: is_valid_percentile(parser, x), default=0.99, help="Max. percentile of a RADIUS. Datapoints above this percentile will be dropped.")
 	parser.add_argument("--radius-min-percentile", dest="radius_min_percentile", type=lambda x: is_valid_percentile(parser, x), default=0.01, help="Min. percentile of a RADIUS. Datapoints below this percentile will be dropped.")
 	parser.add_argument("--eyeblink", dest="eyeblink", type=int, default=50, help="Number of pixels between top and bottom lid. Datapoints below this value will be dropped.")
@@ -95,7 +97,7 @@ def main():
 				low_likelihood = True		# find low likelihood
 				break
 		if low_likelihood:
-			initial_data += [[np.nan, np.nan, np.nan, np.nan, np.nan]]	# anything lower than threshold is NaN
+			initial_data += [[np.nan, np.nan, np.nan, np.nan, np.nan]]	# if not within normal range --- remove
 		else:
 			status, ellipse = ellipse_fit(
 				np.array([row["x"], row["x.1"], row["x.2"], row["x.3"], row["x.4"], row["x.5"], row["x.6"], row["x.7"]]), #ellipse.py fit the ellipse
@@ -107,16 +109,18 @@ def main():
 					ellipse["Y0_in"],
 					ellipse["b"],
 					ellipse["a"],
-					ellipse["a"] / ellipse["b"], #ellipse found
+					ellipse["a"] / ellipse["b"], #ellipse is found
 				]]
 			else:
-				initial_data += [[np.nan, np.nan, np.nan, np.nan, np.nan]] #ellipse not found
+				initial_data += [[np.nan, np.nan, np.nan, np.nan, np.nan]] #ellipse is not found, 
 
 	frame = pd.DataFrame(initial_data, columns=['x0', 'y0', 'rlong', 'rshort', 'radius_ratio'])
 
-	frame[frame.radius_ratio > frame.radius_ratio.quantile(radius_max_percentile)] = np.nan
+	# Remove radius outliers
+	frame[frame.radius_ratio > frame.radius_ratio.quantile(radius_max_percentile)] = np.nan 
 	frame[frame.radius_ratio < frame.radius_ratio.quantile(radius_min_percentile)] = np.nan
 
+	#Sliding Window. Removes outliers
 	current = 0
 	while current < len(frame.index):
 		current_window = min(window, len(frame.index) - current)
@@ -136,9 +140,7 @@ def main():
 		frame[current:current + current_window] = current_frame.copy()
 		current += window
 
-	frame.interpolate(inplace=True)
-
-	print(frame)
+	frame.interpolate(inplace=True) #interpolation
 
 	import matplotlib.pyplot as plt
 

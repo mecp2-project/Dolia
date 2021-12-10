@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# from https://www.mathworks.com/matlabcentral/fileexchange/3215-fit_ellipse
+# adapted from https://www.mathworks.com/matlabcentral/fileexchange/3215-fit_ellipse 
 import numpy as np
 
 

@@ -34,14 +34,6 @@ def main():
 	
 	frame = pd.read_csv('clean.csv')
 
-	#plt.plot(frame["roll_x0"], color = 'red', label = f'Rolling Mean {rolling}')
-		
-	#plt.plot(frame["x0"], linewidth = 0.5, label = 'Raw Data')
-	#plt.ylabel('Pixels')
-	#plt.xlabel('Frames')
-	#plt.legend()
-	#plt.show()
-
 	fig, (ax1, ax2) = plt.subplots(2)
 	ax1.plot(frame["x0"], linewidth = 0.5, label = 'Raw Data')
 	ax1.plot(frame["roll_x0"],color = 'red', label = 'Rolling Mean')

@@ -5,8 +5,8 @@ Inputs:
 		2. Threshold of the likelihood for all points;
 		3. Minimum percentile for datapoints of interest. Anything BELOW this percentile will be dropped;
 		4. Maximum percentile for datapoints of interest. Anything ABOVE this percentile will be dropped;
-		5. Minimum percentile for Radius. Anything BELOW this percentile will be dropped;
-		6. Maximum percentile for Radius. Anything ABOVE this percentile will be dropped;
+		5. Minimum percentile for Radius Ratio. Anything BELOW this percentile will be dropped;
+		6. Maximum percentile for Radius Ratio. Anything ABOVE this percentile will be dropped;
 		7. Threshold that is considered an eyeblink. Anything BELOW this value will be dropped;
 		8. Number of points you want to plot (it is 0 by default). If you want to print everything, type -n 0;
 		9. Size of the sliding window;
@@ -15,11 +15,11 @@ Inputs:
 What it does:
 		This function reads CSV file, detects points with low likelihood, marks them as NaN (not a number) and gets them removed. 
 		Next, it tries to fit an ellipse (ellipse.py).
-		If ellipse is found -- data is written into table, If ellipse not found data are aremoved.
+		If ellipse is found -- data is written into table, If ellipse not found data are are removed.
 		Ratios of radii that are not within threshold range get removed.
 		Sliding window removes last outliers.
 		Rolling mean to smooth the plot and remove outliers.
-		Plotting.		
+		Write CSV File		
 
 TODO:
 		1. Output --- File Name (initial file name + clean)

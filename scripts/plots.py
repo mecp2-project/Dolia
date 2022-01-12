@@ -32,6 +32,8 @@ def main():
 	import pandas as pd
 	import matplotlib.pyplot as plt
 	from scipy.signal import find_peaks
+	import matplotlib.colors as mcolors
+
 
 	rolling = parse_cli()
 
@@ -42,9 +44,19 @@ def main():
 	frame["roll_x0"] = frame["x0"].rolling(20).mean()  # rolling mean to smooth the plot
 	frame["std_x0"] = frame["roll_x0"].rolling(5).std()  # rolling mean to smooth the plot
 	frame["std_plus_x0"] = frame["std_x0"] * std_coefficient + frame["roll_x0"]
+	frame["roll_y0"] = frame["y0"].rolling(20).mean()  # rolling mean to smooth the plot
+	frame["std_y0"] = frame["roll_y0"].rolling(5).std()  # rolling mean to smooth the plot
+	frame["std_plus_y0"] = frame["std_y0"] * std_coefficient + frame["roll_y0"]
+	frame["std_plus_y0_flip"] = -(frame["std_plus_y0"]) + 200
 
 	peaks, _ = find_peaks(frame["std_plus_x0"], height=2, distance=200, prominence=2)
 	print(len(peaks))
+
+	peaks_y, _ = find_peaks(frame["std_plus_y0"], height=2, distance=200, prominence=2)
+	print(len(peaks_y))
+
+	peaks_y_flip, _ = find_peaks(frame["std_plus_y0_flip"], height=2, distance=200, prominence=2)
+	print(len(peaks_y_flip))
 
 	new_peaks = []
 	for peak in peaks:
@@ -57,21 +69,37 @@ def main():
 		if right_mean > left_mean:
 			new_peaks += [peak]
 
-	print(len(new_peaks))
+	new_peaks_y = []
+	for peak in peaks_y:
+		if peak < 50 or peak > len(frame.index) - 50:
+			new_peaks_y += [peak]
+			continue
+		left_mean = frame["std_plus_y0"][peak - 50 : peak].mean()
+		right_mean = frame["std_plus_y0"][peak : peak + 50 ].mean()
+		if right_mean > left_mean:
+			new_peaks_y += [peak]
+
+	for peak in peaks_y_flip:
+		if peak < 50 or peak > len(frame.index) - 50:
+			new_peaks_y += [peak]
+			continue
+		left_mean = frame["std_plus_y0_flip"][peak - 50 : peak].mean()
+		right_mean = frame["std_plus_y0_flip"][peak : peak + 50 ].mean()
+		if right_mean > left_mean:
+			new_peaks_y += [peak]					
+
+	
 
 	fig, (ax1, ax2) = plt.subplots(2, sharex=True)
-	ax1.plot(frame["x0"], linewidth=0.5, label='Raw Data', color="green")
-	# ax1.plot(frame["roll_x0"], color='red', label='Rolling Mean')
-	ax1.plot(frame["std_plus_x0"], color='blue', label='Rolling STD')
-	ax1.plot(new_peaks, frame["std_plus_x0"][new_peaks], "o", color="red", alpha=0.5)
-	#ax1.plot(peaks, frame["std_plus_x0"][peaks], "x", color="yellow")
+	ax1.plot(frame["x0"], linewidth=0.5, label='Raw Data', color="darkslategray")
+	ax1.plot(frame["std_plus_x0"], color='teal', label='Rolling STD')
+	ax1.plot(new_peaks, frame["std_plus_x0"][new_peaks], "o", color="mediumvioletred", alpha=0.5)
 	ax1.set_title('Horizontal Movements')
 	ax1.legend()
 
-	ax2.plot(frame["y0"], linewidth = 0.5, label = 'Raw Data', color = "green")
-	#ax1.plot(frame["std_plus_y0"], color='blue', label='Rolling STD')
-	#ax1.plot(new_peaks, frame["std_plus_y0"][new_peaks], "o", color="red", alpha=0.5)
-	ax2.plot(frame["roll_y0"],color = 'red', label = 'Rolling Mean')
+	ax2.plot(frame["y0"], linewidth = 0.5, label = 'Raw Data', color = 'navy')
+	ax2.plot(frame["std_plus_y0"], color='cornflowerblue', label='Rolling STD')
+	ax2.plot(new_peaks_y, frame["std_plus_y0"][new_peaks_y], "o", color="darkmagenta", alpha=0.5)
 	ax2.set_title('Vertical Movements')
 	ax2.set_xlabel('Frames')
 	fig.text(0.06, 0.5, 'Pixels', ha='center', va='center', rotation='vertical')

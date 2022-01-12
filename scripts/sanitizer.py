@@ -19,7 +19,7 @@ What it does:
 		Ratios of radii that are not within threshold range get removed.
 		Sliding window removes last outliers.
 		Rolling mean to smooth the plot and remove outliers.
-		Write CSV File		
+		Write CSV File
 
 TODO:
 		1. Output --- File Name (initial file name + clean)
@@ -139,8 +139,8 @@ def main():
 
 	logging.info("Removed Radius Ratio Outliers")
 
-	#Sliding Window. Removes outliers
-	current = 0  #first position
+	# Sliding Window. Removes outliers
+	current = 0  # first position
 	while current < len(frame.index):
 		current_window = min(window, len(frame.index) - current)
 		current_frame = frame[current:current + current_window].copy()
@@ -159,18 +159,18 @@ def main():
 		frame[current:current + current_window] = current_frame.copy()
 		current += window
 
-	frame.interpolate(inplace=True)  #interpolation
+	frame.interpolate(inplace=True)  # interpolation
 
 	logging.info("Removed X Y Outliers")
 
-	frame["roll_x0"] = frame["x0"].rolling(rolling).mean()  #rolling mean to smooth the plot
-	frame["roll_y0"] = frame["y0"].rolling(rolling).mean()  #rolling mean to smooth the plot
+	frame["roll_x0"] = frame["x0"].rolling(rolling).mean()  # rolling mean to smooth the plot
+	frame["roll_y0"] = frame["y0"].rolling(rolling).mean()  # rolling mean to smooth the plot
 
 	logging.info("Smoothed the plot")
 
 	frame.to_csv('clean.csv')
 
-	logging.info("Written to CSV File")
+	logging.info("Written to CSV File (clean.csv)")
 
 
 if __name__ == "__main__":

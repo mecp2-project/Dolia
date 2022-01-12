@@ -75,30 +75,26 @@ def main():
 
 	figure, (subplot_horizontal, subplot_vertical) = plt.subplots(2)
 
-	for tag, subplot, title in [[horizontal, subplot_horizontal, "Horizontal"], [vertical, subplot_vertical, "Vertical"]]:
+	for tag, title in [[horizontal, "Horizontal"], [vertical, "Vertical"]]:
 		frame[f"mavg_{moving_avg}_{tag}"] = frame[tag].rolling(moving_avg).mean()
 
 		frame[f"std_{tag}"] = frame[f"mavg_{moving_avg}_{tag}"].rolling(moving_avg).std()
 		frame[f"std_plus_{tag}"] = frame[f"std_{tag}"] * std_coefficient + frame[f"mavg_{moving_avg}_{tag}"]
 
-	all_peaks = np.array([])
+	peaks = {}
 	for tag in [horizontal, vertical]:
-		peaks, _ = find_peaks(frame[f"std_plus_{tag}"], height=2, distance=200)
-		logger.info(f"Found {len(peaks)} peaks in {tag}")
-		all_peaks = np.concatenate((all_peaks, peaks), axis=None)
-	all_peaks = np.unique(all_peaks)
-	logger.info(f"Found total of {len(all_peaks)}")
+		peaks[tag] = find_peaks(frame[f"std_plus_{tag}"], height=2, distance=200)[0]
+		logger.info(f"Found {len(peaks)} peaks for {tag}")
 
 	subplot_vertical.set_xlabel("Frames")
 	figure.text(0.06, 0.5, "Pixels", ha="center", va="center", rotation="vertical")
 
 	current = 0
+	peak = 0
 	peak_index = 0
 	peak_plots = {}
 	confirmed_peaks = []
 	confirmed_peaks_plots = {}
-
-	logger.debug(f"First peak: {int(all_peaks[peak_index])}")
 
 	background = None
 	active_peak_plots = {}
@@ -113,13 +109,13 @@ def main():
 
 			left_endpoint = max(0, current - int(0.5 * window))
 			right_endpoint = min(len(frame.index), current + window + int(0.5 * window))
-			peaks_in_range = all_peaks[(all_peaks >= left_endpoint) & (all_peaks <= right_endpoint)]
+			peaks_in_range = peaks[tag][(peaks[tag] >= left_endpoint) & (peaks[tag] <= right_endpoint)]
 
 			subplot.plot(frame[tag][left_endpoint:right_endpoint], linewidth=0.5, label="Original Sanitized Series", color="darkslategray")
 			subplot.plot(frame[f"std_plus_{tag}"][left_endpoint:right_endpoint], label=f"{std_coefficient} STD from {moving_avg} moving average", color="teal")
 			subplot.plot(peaks_in_range, frame[f"std_plus_{tag}"][peaks_in_range], "o", color="orange", alpha=0.5)
 
-			(active_peak_plots[tag],) = subplot.plot([], [], marker="o", color="red", alpha=1, animated=True)
+			(active_peak_plots[tag], ) = subplot.plot([], [], marker="o", color="red", alpha=1, animated=True)
 
 			subplot.set_xlim(current, current + window)
 			subplot.set_ylim(frame[tag][current:current + window].min() * 0.9, frame[tag][current:current + window].max() * 1.1)
@@ -157,28 +153,17 @@ def main():
 			window = int(window / 2)
 		elif event.key == KEY_ZOOM_OUT:
 			window = int(window * 2)
-		elif event.key == KEY_NEXT_PEAK:
-			if peak_index != len(all_peaks) - 1:
-				peak_index += 1
-		elif event.key == KEY_PREV_PEAK:
-			if peak_index != 0:
-				peak_index -= 1
-		elif event.key == KEY_CONF_PEAK:
-			peak = all_peaks[peak_index]
-			if peak in confirmed_peaks:
-				confirmed_peaks.remove(peak)
-				logger.debug(f"Unconfirmed peak: {int(all_peaks[peak_index])}")
-			else:
-				confirmed_peaks += [peak]
-				logger.debug(f"Confirmed peak: {int(all_peaks[peak_index])}")
 		redraw()
 
 	current_mouse_x = 0
 
 	def motion_notify_handler(event):
 		nonlocal current_mouse_x
+		nonlocal peak
 
 		def compute_nearest_peak(tag, current):
+			nonlocal peak
+
 			points = frame[f"std_plus_{tag}"][current:min(len(frame.index), current + peak_search_distance)].tolist()
 			peak = current
 			for x in range(0, len(points) - 2):
@@ -202,12 +187,24 @@ def main():
 
 					figure.canvas.flush_events()
 
-					logger.debug("Redrawn")
-
 				break
+
+	def on_click_handler(event):
+		if not event.dblclick and event.button == 1:
+			for tag, subplot in [[horizontal, subplot_horizontal], [vertical, subplot_vertical]]:
+				if event.inaxes == subplot:
+					if peak in peaks[tag]:
+						peaks[tag] = np.delete(peaks[tag], peaks[tag] == peak)
+						logger.debug(f"Unconfirmed peak: {peak}")
+					else:
+						peaks[tag] = np.append(peaks[tag], peak)
+						logger.debug(f"Confirmed peak: {peak}")
+					redraw()
+					break
 
 	figure.canvas.mpl_connect("motion_notify_event", motion_notify_handler)
 	figure.canvas.mpl_connect("key_press_event", key_press_handler)
+	figure.canvas.mpl_connect('button_press_event', on_click_handler)
 
 	plt.show()
 

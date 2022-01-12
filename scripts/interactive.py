@@ -11,7 +11,6 @@ import matplotlib
 import textwrap
 import numpy as np
 from scipy.signal import find_peaks
-import matplotlib.colors as mcolors
 
 matplotlib.use('Qt5Agg')
 
@@ -53,44 +52,34 @@ def parse_cli():
 	)
 	parser.add_argument("--file", dest="file", type=lambda x: is_valid_file(parser, x), required=True, help="CSV file to read.")
 	parser.add_argument("--window", dest="window", type=int, default=1000, help="Length of zoom windown in frames.")
-	parser.add_argument("--moving-avgs", dest="moving_avgs", nargs="*", type=int, default=[10], help="Moving average lags (may provide multiple, space separated")
+	parser.add_argument("--moving-avg", dest="moving_avg", type=int, default=10, help="Moving average lag")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
 
 	args = parser.parse_args()
 
 	coloredlogs.install(level=logging.DEBUG if args.verbose else logging.INFO, logger=logger)
 
-	return args.file, args.moving_avgs, args.window
+	return args.file, args.moving_avg, args.window
 
 
 def main():
 
-	file, moving_avgs, window = parse_cli()
-
-	if len(moving_avgs) == 0:
-		logger.critical("Need to provide at least one moving average")
+	file, moving_avg, window = parse_cli()
 
 	frame = pd.read_csv(file)
 
 	horizontal = "x0"
 	vertical = "y0"
 	std_coefficient = 2
+	peak_search_distance = 100
 
 	figure, (subplot_horizontal, subplot_vertical) = plt.subplots(2)
 
 	for tag, subplot, title in [[horizontal, subplot_horizontal, "Horizontal"], [vertical, subplot_vertical, "Vertical"]]:
-		subplot.plot(frame[tag], linewidth=0.5, label="Raw Data", color="darkslategray")
+		frame[f"mavg_{moving_avg}_{tag}"] = frame[tag].rolling(moving_avg).mean()
 
-		for moving_avg in moving_avgs:
-			frame[f"mavg_{moving_avg}_{tag}"] = frame[tag].rolling(moving_avg).mean()
-			subplot.plot(frame[f"mavg_{moving_avg}_{tag}"], label=f"Moving Average {moving_avg}", color="steelblue")
-
-		frame[f"std_{tag}"] = frame[f"mavg_{moving_avgs[0]}_{tag}"].rolling(5).std()
-		frame[f"std_plus_{tag}"] = frame[f"std_{tag}"] * std_coefficient + frame[f"mavg_{moving_avgs[0]}_{tag}"]
-		subplot.plot(frame[f"std_plus_{tag}"], label=f"{std_coefficient} STD from {moving_avgs[0]} moving average", color="teal")
-
-		subplot.set_title(f"{title} Movements")
-		subplot.legend()
+		frame[f"std_{tag}"] = frame[f"mavg_{moving_avg}_{tag}"].rolling(moving_avg).std()
+		frame[f"std_plus_{tag}"] = frame[f"std_{tag}"] * std_coefficient + frame[f"mavg_{moving_avg}_{tag}"]
 
 	all_peaks = np.array([])
 	for tag in [horizontal, vertical]:
@@ -99,9 +88,6 @@ def main():
 		all_peaks = np.concatenate((all_peaks, peaks), axis=None)
 	all_peaks = np.unique(all_peaks)
 	logger.info(f"Found total of {len(all_peaks)}")
-
-	for tag, subplot in [[horizontal, subplot_horizontal], [vertical, subplot_vertical]]:
-		subplot.plot(all_peaks, frame[f"std_plus_{tag}"][all_peaks], "o", color="orange", alpha=0.5)
 
 	subplot_vertical.set_xlabel("Frames")
 	figure.text(0.06, 0.5, "Pixels", ha="center", va="center", rotation="vertical")
@@ -114,26 +100,40 @@ def main():
 
 	logger.debug(f"First peak: {int(all_peaks[peak_index])}")
 
+	background = None
+	active_peak_plots = {}
+
 	def redraw():
 		nonlocal confirmed_peaks_plots
+		nonlocal background
+		nonlocal active_peak_plots
 
 		for tag, subplot in [[horizontal, subplot_horizontal], [vertical, subplot_vertical]]:
+			subplot.cla()
+
+			left_endpoint = max(0, current - int(0.5 * window))
+			right_endpoint = min(len(frame.index), current + window + int(0.5 * window))
+			peaks_in_range = all_peaks[(all_peaks >= left_endpoint) & (all_peaks <= right_endpoint)]
+
+			subplot.plot(frame[tag][left_endpoint:right_endpoint], linewidth=0.5, label="Original Sanitized Series", color="darkslategray")
+			subplot.plot(frame[f"std_plus_{tag}"][left_endpoint:right_endpoint], label=f"{std_coefficient} STD from {moving_avg} moving average", color="teal")
+			subplot.plot(peaks_in_range, frame[f"std_plus_{tag}"][peaks_in_range], "o", color="orange", alpha=0.5)
+
+			(active_peak_plots[tag],) = subplot.plot([], [], marker="o", color="red", alpha=1, animated=True)
 
 			subplot.set_xlim(current, current + window)
-			subplot.set_ylim(frame[tag][current:current + window].min() * 0.8, frame[tag][current:current + window].max() * 1.2)
+			subplot.set_ylim(frame[tag][current:current + window].min() * 0.9, frame[tag][current:current + window].max() * 1.1)
 
-			if tag in confirmed_peaks_plots:
-				# confirmed_peaks_plot.pop(0).remove()
-				confirmed_plot = confirmed_peaks_plots[tag].pop(0)
-				confirmed_plot.remove()
-			confirmed_peaks_plots[tag] = subplot.plot(confirmed_peaks, frame[f"std_plus_{tag}"][confirmed_peaks], "o", color="green", alpha=1)
+			subplot.set_title(f"{title} Movements")
+			subplot.legend()
 
-			if tag in peak_plots:
-				peak_plot = peak_plots[tag].pop(0)
-				peak_plot.remove()
-			peak_plots[tag] = subplot.plot([all_peaks[peak_index]], frame[f"std_plus_{tag}"][[all_peaks[peak_index]]], "o", color="red", alpha=1)
+			# if tag in confirmed_peaks_plots:
+			# 	confirmed_plot = confirmed_peaks_plots[tag].pop(0)
+			# 	confirmed_plot.remove()
+			# confirmed_peaks_plots[tag] = subplot.plot(confirmed_peaks, frame[f"std_plus_{tag}"][confirmed_peaks], "o", color="green", alpha=1)
 
 		figure.canvas.draw()
+		background = figure.canvas.copy_from_bbox(figure.bbox)
 
 	redraw()
 
@@ -173,6 +173,40 @@ def main():
 				logger.debug(f"Confirmed peak: {int(all_peaks[peak_index])}")
 		redraw()
 
+	current_mouse_x = 0
+
+	def motion_notify_handler(event):
+		nonlocal current_mouse_x
+
+		def compute_nearest_peak(tag, current):
+			points = frame[f"std_plus_{tag}"][current:min(len(frame.index), current + peak_search_distance)].tolist()
+			peak = current
+			for x in range(0, len(points) - 2):
+				peak = x + current
+				if points[x] >= points[x + 1]:
+					break
+			return peak
+
+		for tag, subplot in [[horizontal, subplot_horizontal], [vertical, subplot_vertical]]:
+			if event.inaxes == subplot:
+				if current_mouse_x != event.xdata:
+					current_mouse_x = event.xdata
+					peak = compute_nearest_peak(tag, int(event.xdata))
+					logger.debug(f"Current peak: {peak}")
+
+					active_peak_plots[tag].set_data([peak], [frame[f"std_plus_{tag}"][peak]])
+
+					figure.canvas.restore_region(background)
+					figure.draw_artist(active_peak_plots[tag])
+					figure.canvas.blit(figure.bbox)
+
+					figure.canvas.flush_events()
+
+					logger.debug("Redrawn")
+
+				break
+
+	figure.canvas.mpl_connect("motion_notify_event", motion_notify_handler)
 	figure.canvas.mpl_connect("key_press_event", key_press_handler)
 
 	plt.show()

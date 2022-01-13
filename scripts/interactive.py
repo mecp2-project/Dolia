@@ -4,6 +4,7 @@ import os
 import logging
 import argparse
 import coloredlogs, logging
+from numpy.core.multiarray import array
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
@@ -30,9 +31,16 @@ KEY_HOLD_NOT_SNAP = "alt"
 
 HORIZONTAL_TAG = "x0"
 VERTICAL_TAG = "y0"
+HIGH_TAG = "high"
+LOW_TAG = "low"
 
 STD_COEFFICIENT = 2
 PEAK_SEARCH_DISTANCE = 50
+
+
+def _tag(tag, type):
+	return f"{tag}_{type}"
+
 
 def parse_cli():
 
@@ -73,7 +81,8 @@ def update_peaks_file(peaks, peaks_file_path):
 
 	peaks_as_lists = {}
 	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
-		peaks_as_lists[tag] = peaks[tag].tolist()
+		for type in [HIGH_TAG, LOW_TAG]:
+			peaks_as_lists[_tag(tag, type)] = peaks[_tag(tag, type)].tolist()
 
 	with open(peaks_path, "w", encoding="utf8") as peaks_file:
 		yaml.dump(peaks_as_lists, peaks_file, default_flow_style=False, allow_unicode=True)
@@ -88,18 +97,42 @@ def read_or_compute_peaks(frame, peaks_file_path):
 			try:
 				content = yaml.safe_load(peaks_file)
 				for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
-					peaks[tag] = np.array(content[tag])
+					for type in [HIGH_TAG, LOW_TAG]:
+						peaks[_tag(tag, type)] = np.array(content[_tag(tag, type)])
 			except yaml.YAMLError as exception:
 				logger.critical(exception)
 	else:
 		for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
-			peaks[tag] = find_peaks(frame[f"std_plus_{tag}"], height=2, distance=200)[0]
+			peaks[_tag(tag, HIGH_TAG)] = find_peaks(frame[f"std_plus_{tag}"], height=2, distance=200)[0]
+			peaks[_tag(tag, LOW_TAG)] = np.array([])
 		update_peaks_file(peaks, peaks_file_path)
 
 	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
-		logger.info(f"Found {len(peaks[tag])} peaks for {tag}")
+		for type in [HIGH_TAG, LOW_TAG]:
+			logger.info(f"Found {len(peaks[f'{tag}_{type}'])} peaks for {f'{tag}_{type}'}")
 
 	return peaks
+
+
+def compute_segments(highs, lows):
+	if len(highs) == 0 or len(lows) == 0:
+		return []
+
+	highs = list(map(lambda x: {"value": x, "tag": HIGH_TAG}, highs))
+	lows = list(map(lambda x: {"value": x, "tag": LOW_TAG}, lows))
+
+	both = highs + lows
+
+	both.sort(key=lambda x: x["value"])
+
+	segments = []
+
+	for i in range(len(both)):
+		if i != 0:
+			if both[i - 1]["tag"] == HIGH_TAG and both[i]["tag"] == LOW_TAG:
+				segments += [[both[i - 1]["value"], both[i]["value"]]]
+
+	return segments
 
 
 def main():
@@ -120,7 +153,7 @@ def main():
 
 	figure, (subplot_horizontal, subplot_vertical) = plt.subplots(2)
 
-	for tag, title in [[HORIZONTAL_TAG, "Horizontal"], [VERTICAL_TAG, "Vertical"]]:
+	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
 		frame[f"mavg_{moving_avg}_{tag}"] = frame[tag].rolling(moving_avg).mean()
 
 		frame[f"std_{tag}"] = frame[f"mavg_{moving_avg}_{tag}"].rolling(moving_avg).std()
@@ -135,21 +168,28 @@ def main():
 		nonlocal background
 		nonlocal active_peak_plots
 
-		for tag, subplot in [[HORIZONTAL_TAG, subplot_horizontal], [VERTICAL_TAG, subplot_vertical]]:
+		for tag, subplot, title in [[HORIZONTAL_TAG, subplot_horizontal, "Horizontal"], [VERTICAL_TAG, subplot_vertical, "Vertical"]]:
 			subplot.cla()
 
 			left_endpoint = max(0, current_left_window_endpoint - int(0.5 * window))
 			right_endpoint = min(len(frame.index), current_left_window_endpoint + window + int(0.5 * window))
-			peaks_in_range = peaks[tag][(peaks[tag] >= left_endpoint) & (peaks[tag] <= right_endpoint)]
 
-			subplot.plot(frame[tag][left_endpoint:right_endpoint], linewidth=0.5, label="Original Sanitized Series", color="darkslategray")
+			subplot.plot(frame[tag][left_endpoint:right_endpoint], linewidth=0.5, label="Original Sanitized Data", color="darkslategray")
 			subplot.plot(frame[f"std_plus_{tag}"][left_endpoint:right_endpoint], label=f"{STD_COEFFICIENT} STD from {moving_avg} moving average", color="teal")
-			subplot.plot(peaks_in_range, frame[f"std_plus_{tag}"][peaks_in_range], "o", color="orange", alpha=0.5)
+
+			peaks_in_range = {}
+			for type, color in [[HIGH_TAG, "orange"], [LOW_TAG, "blue"]]:
+				peaks_in_range[type] = peaks[_tag(tag, type)][(peaks[_tag(tag, type)] >= left_endpoint) & (peaks[_tag(tag, type)] <= right_endpoint)]
+				subplot.plot(peaks_in_range[type], frame[f"std_plus_{tag}"][peaks_in_range[type]], "o", color=color, alpha=0.5)
+
+			segments = compute_segments(peaks_in_range[HIGH_TAG].tolist(), peaks_in_range[LOW_TAG].tolist())
+			for start, end in segments:
+				subplot.axvspan(start, end, color='green', alpha=0.3)
 
 			(active_peak_plots[tag], ) = subplot.plot([], [], marker="o", color="red", alpha=0.75, animated=True)
 
 			subplot.set_xlim(current_left_window_endpoint, current_left_window_endpoint + window)
-			subplot.set_ylim(frame[tag][current_left_window_endpoint:current_left_window_endpoint + window].min() * 0.9, frame[tag][current_left_window_endpoint:current_left_window_endpoint + window].max() * 1.1)
+			subplot.set_ylim(frame[f"std_plus_{tag}"][current_left_window_endpoint:current_left_window_endpoint + window].min() * 0.9, frame[f"std_plus_{tag}"][current_left_window_endpoint:current_left_window_endpoint + window].max() * 1.1)
 
 			subplot.set_title(f"{title} Movements")
 			subplot.legend()
@@ -160,7 +200,6 @@ def main():
 	def key_release_handler(event):
 		if event.key in current_pressed_keys:
 			current_pressed_keys.remove(event.key)
-		logger.debug(f"Released {event.key}, current_pressed_keys: {current_pressed_keys}")
 
 	def key_press_handler(event):
 		nonlocal current_left_window_endpoint
@@ -196,12 +235,12 @@ def main():
 			points = frame[f"std_plus_{tag}"][current:min(len(frame.index), current + PEAK_SEARCH_DISTANCE)].tolist()
 			for x in range(0, len(points) - 2):
 				peak = x + current
-				if peak in peaks[tag]:
+				if peak in peaks[_tag(tag, HIGH_TAG)] or peak in peaks[_tag(tag, LOW_TAG)]:
 					return peak
 
 			for x in range(0, len(points) - 2):
 				peak = x + current
-				if points[x] >= points[x + 1] or peak in peaks[tag]:
+				if points[x] >= points[x + 1]:
 					return peak
 
 			return peak
@@ -213,7 +252,7 @@ def main():
 					peak_selection = compute_nearest_peak(tag, int(event.xdata))
 
 					active_peak_plots[tag].set_data([peak_selection], [frame[f"std_plus_{tag}"][peak_selection]])
-					if peak_selection in peaks[tag]:
+					if peak_selection in peaks[_tag(tag, HIGH_TAG)] or peak_selection in peaks[_tag(tag, LOW_TAG)]:
 						active_peak_plots[tag].set(marker="x")
 					else:
 						active_peak_plots[tag].set(marker="o")
@@ -227,18 +266,20 @@ def main():
 				break
 
 	def on_click_handler(event):
-		if not event.dblclick and event.button == 1:
-			for tag, subplot in [[HORIZONTAL_TAG, subplot_horizontal], [VERTICAL_TAG, subplot_vertical]]:
-				if event.inaxes == subplot:
-					if peak_selection in peaks[tag]:
-						peaks[tag] = np.delete(peaks[tag], peaks[tag] == peak_selection)
-						logger.debug(f"Removed peak: {peak_selection}")
-					else:
-						peaks[tag] = np.append(peaks[tag], peak_selection)
-						logger.debug(f"Added peak: {peak_selection}")
-					update_peaks_file(peaks, peaks_file)
-					redraw()
-					break
+		if not event.dblclick:
+			for type, button in [[HIGH_TAG, 1], [LOW_TAG, 3]]:
+				if event.button == button:
+					for tag, subplot in [[HORIZONTAL_TAG, subplot_horizontal], [VERTICAL_TAG, subplot_vertical]]:
+						if event.inaxes == subplot:
+							if peak_selection in peaks[_tag(tag, type)]:
+								peaks[_tag(tag, type)] = np.delete(peaks[_tag(tag, type)], peaks[_tag(tag, type)] == peak_selection)
+								logger.debug(f"Removed {type} peak: {peak_selection}")
+							else:
+								peaks[_tag(tag, type)] = np.append(peaks[_tag(tag, type)], peak_selection)
+								logger.debug(f"Added {type} peak: {peak_selection}")
+							update_peaks_file(peaks, peaks_file)
+							redraw()
+							break
 
 	figure.canvas.mpl_connect("motion_notify_event", motion_notify_handler)
 	figure.canvas.mpl_connect("key_press_event", key_press_handler)

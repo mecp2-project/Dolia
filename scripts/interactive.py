@@ -121,7 +121,7 @@ def main():
 
 	figure, (subplot_horizontal, subplot_vertical) = plt.subplots(2)
 
-	for tag, title in [[HORIZONTAL_TAG, "Horizontal"], [VERTICAL_TAG, "Vertical"]]:
+	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
 		frame[f"mavg_{moving_avg}_{tag}"] = frame[tag].rolling(moving_avg).mean()
 
 		frame[f"std_{tag}"] = frame[f"mavg_{moving_avg}_{tag}"].rolling(moving_avg).std()
@@ -136,21 +136,21 @@ def main():
 		nonlocal background
 		nonlocal active_peak_plots
 
-		for tag, subplot in [[HORIZONTAL_TAG, subplot_horizontal], [VERTICAL_TAG, subplot_vertical]]:
+		for tag, subplot, title in [[HORIZONTAL_TAG, subplot_horizontal, "Horizontal"], [VERTICAL_TAG, subplot_vertical, "Vertical"]]:
 			subplot.cla()
 
 			left_endpoint = max(0, current_left_window_endpoint - int(0.5 * window))
 			right_endpoint = min(len(frame.index), current_left_window_endpoint + window + int(0.5 * window))
 			peaks_in_range = peaks[tag][(peaks[tag] >= left_endpoint) & (peaks[tag] <= right_endpoint)]
 
-			subplot.plot(frame[tag][left_endpoint:right_endpoint], linewidth=0.5, label="Original Sanitized Series", color="darkslategray")
+			subplot.plot(frame[tag][left_endpoint:right_endpoint], linewidth=0.5, label="Original Sanitized Data", color="darkslategray")
 			subplot.plot(frame[f"std_plus_{tag}"][left_endpoint:right_endpoint], label=f"{STD_COEFFICIENT} STD from {moving_avg} moving average", color="teal")
 			subplot.plot(peaks_in_range, frame[f"std_plus_{tag}"][peaks_in_range], "o", color="orange", alpha=0.5)
 
 			(active_peak_plots[tag], ) = subplot.plot([], [], marker="o", color="red", alpha=0.75, animated=True)
 
 			subplot.set_xlim(current_left_window_endpoint, current_left_window_endpoint + window)
-			subplot.set_ylim(frame[tag][current_left_window_endpoint:current_left_window_endpoint + window].min() * 0.9, frame[tag][current_left_window_endpoint:current_left_window_endpoint + window].max() * 1.1)
+			subplot.set_ylim(frame[f"std_plus_{tag}"][current_left_window_endpoint:current_left_window_endpoint + window].min() * 0.9, frame[f"std_plus_{tag}"][current_left_window_endpoint:current_left_window_endpoint + window].max() * 1.1)
 
 			subplot.set_title(f"{title} Movements")
 			subplot.legend()

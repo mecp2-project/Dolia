@@ -114,6 +114,27 @@ def read_or_compute_peaks(frame, peaks_file_path):
 	return peaks
 
 
+def compute_segments(highs, lows):
+	if len(highs) == 0 or len(lows) == 0:
+		return []
+
+	highs = list(map(lambda x: {"value": x, "tag": HIGH_TAG}, highs))
+	lows = list(map(lambda x: {"value": x, "tag": LOW_TAG}, lows))
+
+	both = highs + lows
+
+	both.sort(key=lambda x: x["value"])
+
+	segments = []
+
+	for i in range(len(both)):
+		if i != 0:
+			if both[i - 1]["tag"] == HIGH_TAG and both[i]["tag"] == LOW_TAG:
+				segments += [[both[i - 1]["value"], both[i]["value"]]]
+
+	return segments
+
+
 def main():
 
 	current_left_window_endpoint = 0
@@ -156,9 +177,14 @@ def main():
 			subplot.plot(frame[tag][left_endpoint:right_endpoint], linewidth=0.5, label="Original Sanitized Data", color="darkslategray")
 			subplot.plot(frame[f"std_plus_{tag}"][left_endpoint:right_endpoint], label=f"{STD_COEFFICIENT} STD from {moving_avg} moving average", color="teal")
 
+			peaks_in_range = {}
 			for type, color in [[HIGH_TAG, "orange"], [LOW_TAG, "blue"]]:
-				peaks_in_range = peaks[_tag(tag, type)][(peaks[_tag(tag, type)] >= left_endpoint) & (peaks[_tag(tag, type)] <= right_endpoint)]
-				subplot.plot(peaks_in_range, frame[f"std_plus_{tag}"][peaks_in_range], "o", color=color, alpha=0.5)
+				peaks_in_range[type] = peaks[_tag(tag, type)][(peaks[_tag(tag, type)] >= left_endpoint) & (peaks[_tag(tag, type)] <= right_endpoint)]
+				subplot.plot(peaks_in_range[type], frame[f"std_plus_{tag}"][peaks_in_range[type]], "o", color=color, alpha=0.5)
+
+			segments = compute_segments(peaks_in_range[HIGH_TAG].tolist(), peaks_in_range[LOW_TAG].tolist())
+			for start, end in segments:
+				subplot.axvspan(start, end, color='green', alpha=0.3)
 
 			(active_peak_plots[tag], ) = subplot.plot([], [], marker="o", color="red", alpha=0.75, animated=True)
 

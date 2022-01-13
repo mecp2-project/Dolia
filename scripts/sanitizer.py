@@ -13,7 +13,7 @@ Inputs:
 		10. Verbosity for debugging.
 
 What it does:
-		This function reads CSV file, detects points with low likelihood, marks them as NaN (not a number) and gets them removed. 
+		This function reads CSV file, detects points with low likelihood, marks them as NaN (not a number) and gets them removed.
 		Next, it tries to fit an ellipse (ellipse.py).
 		If ellipse is found -- data is written into table, If ellipse not found data are are removed.
 		Ratios of radii that are not within threshold range get removed.
@@ -167,6 +167,11 @@ def main():
 	frame["roll_y0"] = frame["y0"].rolling(rolling).mean()  # rolling mean to smooth the plot
 
 	logging.info("Smoothed the plot")
+
+	frame["ellipse_area"] = (frame["rlong"]*frame["rshort"])*np.pi
+	frame["roll_ellipse_area"] = frame["ellipse_area"].rolling(rolling).mean()  # rolling mean to smooth the plot
+
+	logging.info("Pupil area calculated and smoothed")
 
 	frame.to_csv('clean.csv')
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from enum import unique
 import os
 import logging
 import argparse
@@ -10,9 +9,9 @@ import matplotlib.pyplot as plt
 import matplotlib
 import textwrap
 import numpy as np
+from pathlib import Path
+import yaml
 from scipy.signal import find_peaks
-
-matplotlib.use('Qt5Agg')
 
 # change directory to that of the script file
 abspath = os.path.abspath(__file__)
@@ -27,9 +26,10 @@ KEY_RIGHT = "right"
 KEY_LEFT = "left"
 KEY_ZOOM_IN = "+"
 KEY_ZOOM_OUT = "-"
-KEY_NEXT_PEAK = "up"
-KEY_PREV_PEAK = "down"
-KEY_CONF_PEAK = "control"
+KEY_HOLD_NOT_SNAP = "alt"
+
+HORIZONTAL_TAG = "x0"
+VERTICAL_TAG = "y0"
 
 
 def parse_cli():
@@ -47,11 +47,15 @@ def parse_cli():
 		epilog=textwrap.dedent(f"""\
 			Keys:
 				{KEY_CLOSE} : close the window, save all peaks
-				{KEY_START} : start the selection, zoom to the first window
+				{KEY_START} : start the selection, zoom to the first window, redraw
+				{KEY_LEFT}/{KEY_RIGHT} : move zoom window left and right
+				{KEY_ZOOM_IN}/{KEY_ZOOM_OUT} : zoom in and out (2x)
+				Hold {KEY_HOLD_NOT_SNAP} : while holding, current peak selection (red dot) will NOT snap to suggested peaks
 		"""),
 	)
-	parser.add_argument("--file", dest="file", type=lambda x: is_valid_file(parser, x), required=True, help="CSV file to read.")
-	parser.add_argument("--window", dest="window", type=int, default=1000, help="Length of zoom windown in frames.")
+	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=True, help="CSV data file to read.")
+	parser.add_argument("--peaks-file", dest="peaks_file", type=str, required=True, help="YAML peaks file. If exists, will read, else will create.")
+	parser.add_argument("--window", dest="window", type=int, default=1000, help="Length of zoom window in frames.")
 	parser.add_argument("--moving-avg", dest="moving_avg", type=int, default=10, help="Moving average lag")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
 
@@ -59,32 +63,63 @@ def parse_cli():
 
 	coloredlogs.install(level=logging.DEBUG if args.verbose else logging.INFO, logger=logger)
 
-	return args.file, args.moving_avg, args.window
+	return args.data_file, args.peaks_file, args.moving_avg, args.window
+
+
+def update_peaks_file(peaks, peaks_file_path):
+	peaks_path = Path(peaks_file_path)
+
+	peaks_as_lists = {}
+	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
+		peaks_as_lists[tag] = peaks[tag].tolist()
+
+	with open(peaks_path, "w", encoding='utf8') as peaks_file:
+		yaml.dump(peaks_as_lists, peaks_file, default_flow_style=False, allow_unicode=True)
+
+
+def read_or_compute_peaks(frame, peaks_file_path):
+	peaks = {}
+
+	peaks_path = Path(peaks_file_path)
+	if peaks_path.exists():
+		with open(peaks_path, "r") as peaks_file:
+			try:
+				content = yaml.safe_load(peaks_file)
+				for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
+					peaks[tag] = np.array(content[tag])
+			except yaml.YAMLError as exception:
+				logger.critical(exception)
+	else:
+		for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
+			peaks[tag] = find_peaks(frame[f"std_plus_{tag}"], height=2, distance=200)[0]
+		update_peaks_file(peaks, peaks_file_path)
+
+	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
+		logger.info(f"Found {len(peaks[tag])} peaks for {tag}")
+
+	return peaks
 
 
 def main():
 
-	file, moving_avg, window = parse_cli()
+	data_file, peaks_file, moving_avg, window = parse_cli()
 
-	frame = pd.read_csv(file)
+	frame = pd.read_csv(data_file)
 
-	horizontal = "x0"
-	vertical = "y0"
 	std_coefficient = 2
-	peak_search_distance = 100
+	peak_search_distance = 50
+
+	matplotlib.use('Qt5Agg')
 
 	figure, (subplot_horizontal, subplot_vertical) = plt.subplots(2)
 
-	for tag, title in [[horizontal, "Horizontal"], [vertical, "Vertical"]]:
+	for tag, title in [[HORIZONTAL_TAG, "Horizontal"], [VERTICAL_TAG, "Vertical"]]:
 		frame[f"mavg_{moving_avg}_{tag}"] = frame[tag].rolling(moving_avg).mean()
 
 		frame[f"std_{tag}"] = frame[f"mavg_{moving_avg}_{tag}"].rolling(moving_avg).std()
 		frame[f"std_plus_{tag}"] = frame[f"std_{tag}"] * std_coefficient + frame[f"mavg_{moving_avg}_{tag}"]
 
-	peaks = {}
-	for tag in [horizontal, vertical]:
-		peaks[tag] = find_peaks(frame[f"std_plus_{tag}"], height=2, distance=200)[0]
-		logger.info(f"Found {len(peaks)} peaks for {tag}")
+	peaks = read_or_compute_peaks(frame, peaks_file)
 
 	subplot_vertical.set_xlabel("Frames")
 	figure.text(0.06, 0.5, "Pixels", ha="center", va="center", rotation="vertical")
@@ -92,19 +127,15 @@ def main():
 	current = 0
 	peak = 0
 	peak_index = 0
-	peak_plots = {}
-	confirmed_peaks = []
-	confirmed_peaks_plots = {}
 
 	background = None
 	active_peak_plots = {}
 
 	def redraw():
-		nonlocal confirmed_peaks_plots
 		nonlocal background
 		nonlocal active_peak_plots
 
-		for tag, subplot in [[horizontal, subplot_horizontal], [vertical, subplot_vertical]]:
+		for tag, subplot in [[HORIZONTAL_TAG, subplot_horizontal], [VERTICAL_TAG, subplot_vertical]]:
 			subplot.cla()
 
 			left_endpoint = max(0, current - int(0.5 * window))
@@ -115,7 +146,7 @@ def main():
 			subplot.plot(frame[f"std_plus_{tag}"][left_endpoint:right_endpoint], label=f"{std_coefficient} STD from {moving_avg} moving average", color="teal")
 			subplot.plot(peaks_in_range, frame[f"std_plus_{tag}"][peaks_in_range], "o", color="orange", alpha=0.5)
 
-			(active_peak_plots[tag], ) = subplot.plot([], [], marker="o", color="red", alpha=1, animated=True)
+			(active_peak_plots[tag], ) = subplot.plot([], [], marker="o", color="red", alpha=0.75, animated=True)
 
 			subplot.set_xlim(current, current + window)
 			subplot.set_ylim(frame[tag][current:current + window].min() * 0.9, frame[tag][current:current + window].max() * 1.1)
@@ -123,23 +154,26 @@ def main():
 			subplot.set_title(f"{title} Movements")
 			subplot.legend()
 
-			# if tag in confirmed_peaks_plots:
-			# 	confirmed_plot = confirmed_peaks_plots[tag].pop(0)
-			# 	confirmed_plot.remove()
-			# confirmed_peaks_plots[tag] = subplot.plot(confirmed_peaks, frame[f"std_plus_{tag}"][confirmed_peaks], "o", color="green", alpha=1)
-
 		figure.canvas.draw()
 		background = figure.canvas.copy_from_bbox(figure.bbox)
 
 	redraw()
 
+	current_pressed_keys = []
+
+	def key_release_handler(event):
+		if event.key in current_pressed_keys:
+			current_pressed_keys.remove(event.key)
+		logger.debug(f"Released {event.key}, current_pressed_keys: {current_pressed_keys}")
+
 	def key_press_handler(event):
 		nonlocal current
 		nonlocal window
 		nonlocal peak_index
-		nonlocal confirmed_peaks
+		nonlocal current_pressed_keys
 
 		logger.debug(f"key pressed: {event.key}")
+		current_pressed_keys += [event.key]
 
 		if event.key == KEY_START:
 			current = 0
@@ -164,22 +198,34 @@ def main():
 		def compute_nearest_peak(tag, current):
 			nonlocal peak
 
-			points = frame[f"std_plus_{tag}"][current:min(len(frame.index), current + peak_search_distance)].tolist()
 			peak = current
+			if KEY_HOLD_NOT_SNAP in current_pressed_keys:
+				return peak
+
+			points = frame[f"std_plus_{tag}"][current:min(len(frame.index), current + peak_search_distance)].tolist()
 			for x in range(0, len(points) - 2):
 				peak = x + current
-				if points[x] >= points[x + 1]:
-					break
+				if peak in peaks[tag]:
+					return peak
+
+			for x in range(0, len(points) - 2):
+				peak = x + current
+				if points[x] >= points[x + 1] or peak in peaks[tag]:
+					return peak
+
 			return peak
 
-		for tag, subplot in [[horizontal, subplot_horizontal], [vertical, subplot_vertical]]:
+		for tag, subplot in [[HORIZONTAL_TAG, subplot_horizontal], [VERTICAL_TAG, subplot_vertical]]:
 			if event.inaxes == subplot:
 				if current_mouse_x != event.xdata:
 					current_mouse_x = event.xdata
 					peak = compute_nearest_peak(tag, int(event.xdata))
-					logger.debug(f"Current peak: {peak}")
 
 					active_peak_plots[tag].set_data([peak], [frame[f"std_plus_{tag}"][peak]])
+					if peak in peaks[tag]:
+						active_peak_plots[tag].set(marker="x")
+					else:
+						active_peak_plots[tag].set(marker="o")
 
 					figure.canvas.restore_region(background)
 					figure.draw_artist(active_peak_plots[tag])
@@ -191,7 +237,7 @@ def main():
 
 	def on_click_handler(event):
 		if not event.dblclick and event.button == 1:
-			for tag, subplot in [[horizontal, subplot_horizontal], [vertical, subplot_vertical]]:
+			for tag, subplot in [[HORIZONTAL_TAG, subplot_horizontal], [VERTICAL_TAG, subplot_vertical]]:
 				if event.inaxes == subplot:
 					if peak in peaks[tag]:
 						peaks[tag] = np.delete(peaks[tag], peaks[tag] == peak)
@@ -199,11 +245,13 @@ def main():
 					else:
 						peaks[tag] = np.append(peaks[tag], peak)
 						logger.debug(f"Confirmed peak: {peak}")
+					update_peaks_file(peaks, peaks_file)
 					redraw()
 					break
 
 	figure.canvas.mpl_connect("motion_notify_event", motion_notify_handler)
 	figure.canvas.mpl_connect("key_press_event", key_press_handler)
+	figure.canvas.mpl_connect("key_release_event", key_release_handler)
 	figure.canvas.mpl_connect('button_press_event', on_click_handler)
 
 	plt.show()

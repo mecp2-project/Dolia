@@ -34,6 +34,7 @@ VERTICAL_TAG = "y0"
 STD_COEFFICIENT = 2
 PEAK_SEARCH_DISTANCE = 50
 
+
 def parse_cli():
 
 	# https://stackoverflow.com/a/11541450/1644554
@@ -160,7 +161,6 @@ def main():
 	def key_release_handler(event):
 		if event.key in current_pressed_keys:
 			current_pressed_keys.remove(event.key)
-		logger.debug(f"Released {event.key}, current_pressed_keys: {current_pressed_keys}")
 
 	def key_press_handler(event):
 		nonlocal current_left_window_endpoint

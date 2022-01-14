@@ -32,4 +32,4 @@ def find_peaks(series, high=True):
 		if right_mean > left_mean:
 			new_peaks += [peak]
 
-	return new_peaks
+	return np.array(new_peaks)

@@ -31,81 +31,35 @@ def parse_cli():
 def main():
 	import pandas as pd
 	import matplotlib.pyplot as plt
-	from scipy.signal import find_peaks
+	from peaks import find_peaks
 	import matplotlib.colors as mcolors
-
 
 	rolling = parse_cli()
 
 	frame = pd.read_csv('clean.csv')
 
-	std_coefficient = 2
+	fig, (ax_horizontal, ax_vertical, ax3) = plt.subplots(3, sharex=True)
 
-	frame["roll_x0"] = frame["x0"].rolling(20).mean()  # rolling mean to smooth the plot
-	frame["std_x0"] = frame["roll_x0"].rolling(5).std()  # rolling mean to smooth the plot
-	frame["std_plus_x0"] = frame["std_x0"] * std_coefficient + frame["roll_x0"]
-	frame["roll_y0"] = frame["y0"].rolling(20).mean()  # rolling mean to smooth the plot
-	frame["std_y0"] = frame["roll_y0"].rolling(5).std()  # rolling mean to smooth the plot
-	frame["std_plus_y0"] = frame["std_y0"] * std_coefficient + frame["roll_y0"]
-	frame["std_minus_y0"] = frame["roll_y0"] - frame["std_y0"] * std_coefficient
-	frame["std_minus_y0_flip"] = -(frame["std_minus_y0"]) + 200
+	def plot_peaks(column_name, plot_name, ax):
+		rolling_mean = frame[column_name].rolling(20).mean()  # rolling mean to smooth the plot
 
-	peaks, _ = find_peaks(frame["std_plus_x0"], height=2, distance=200, prominence=2)
-	print(len(peaks))
+		peaks = find_peaks(rolling_mean, high=True)
+		print(len(peaks))
 
-	peaks_y, _ = find_peaks(frame["std_plus_y0"], height=2, distance=200, prominence=2)
-	print(len(peaks_y))
+		peaks_low = find_peaks(rolling_mean, high=False)
+		print(len(peaks_low))
 
-	peaks_y_flip, _ = find_peaks(frame["std_minus_y0_flip"], height=2, distance=200, prominence=2)
-	print(len(peaks_y_flip))
+		ax.set_title(f"{plot_name} Movements")
+		ax.plot(frame[column_name], linewidth=0.5, label='Raw Data', color="black")
+		ax.plot(rolling_mean, color='teal', label='Rolling Mean')
+		ax.plot(peaks, rolling_mean[peaks], "o", color="mediumvioletred", alpha=0.5)
+		ax.plot(peaks_low, rolling_mean[peaks_low], "o", color="orange", alpha=0.5)
+		ax.legend()
 
-	new_peaks = []
-	for peak in peaks:
-		if peak < 50 or peak > len(frame.index) - 50:
-			new_peaks += [peak]
-			continue
-		left_mean = frame["std_plus_x0"][peak - 50 : peak].mean()
-		right_mean = frame["std_plus_x0"][peak : peak + 50 ].mean()
-		# print(f"Left mean = {left_mean}", f"Right mean = {right_mean}", f"Peak = {peak}", f"keep = {right_mean > left_mean}")
-		if right_mean > left_mean:
-			new_peaks += [peak]
+	plot_peaks("x0", "Horizontal", ax_horizontal)
+	plot_peaks("y0", "Vertical", ax_vertical)
 
-	new_peaks_y = []
-	for peak in peaks_y:
-		if peak < 50 or peak > len(frame.index) - 50:
-			new_peaks_y += [peak]
-			continue
-		left_mean = frame["std_plus_y0"][peak - 50 : peak].mean()
-		right_mean = frame["std_plus_y0"][peak : peak + 50 ].mean()
-		if right_mean > left_mean:
-			new_peaks_y += [peak]
-
-	for peak in peaks_y_flip:
-		if peak < 50 or peak > len(frame.index) - 50:
-			new_peaks_y += [peak]
-			continue
-		left_mean = frame["std_minus_y0_flip"][peak - 50 : peak].mean()
-		right_mean = frame["std_minus_y0_flip"][peak : peak + 50 ].mean()
-		if right_mean > left_mean:
-			new_peaks_y += [peak]
-
-
-
-	fig, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
-	ax1.plot(frame["x0"], linewidth=0.5, label='Raw Data', color="black")
-	ax1.plot(frame["std_plus_x0"], color='teal', label='Rolling STD')
-	ax1.plot(new_peaks, frame["std_plus_x0"][new_peaks], "o", color="mediumvioletred", alpha=0.5)
-	ax1.set_title('Horizontal Movements')
-	ax1.legend()
-
-	ax2.plot(frame["y0"], linewidth = 0.5, label = 'Raw Data', color = 'black')
-	ax2.plot(frame["std_plus_y0"], color='teal', label='Rolling STD')
-	ax2.plot(new_peaks_y, frame["std_plus_y0"][new_peaks_y], "o", color="mediumvioletred", alpha=0.5)
-	ax2.set_title('Vertical Movements')
-	fig.text(0.06, 0.5, 'Pixels', ha='center', va='center', rotation='vertical')
-	ax2.legend()
-
-	ax3.plot(frame["ellipse_area"], linewidth = 0.5, label = 'Raw Data', color = 'black')
+	ax3.plot(frame["ellipse_area"], linewidth=0.5, label='Raw Data', color='black')
 	ax3.plot(frame["roll_ellipse_area"], color='teal', label='Rolling Mean')
 	ax3.set_title('Pupil Area')
 	ax3.set_xlabel('Frames')

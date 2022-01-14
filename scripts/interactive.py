@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 
 import os
-import logging
 import argparse
 import coloredlogs, logging
-from numpy.core.multiarray import array
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib
-import textwrap
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
 from pathlib import Path
+import textwrap
+from scipy.signal import windows
 import yaml
-from scipy.signal import find_peaks
+from peaks import find_peaks
 
 # change directory to that of the script file
 abspath = os.path.abspath(__file__)
@@ -22,11 +21,10 @@ os.chdir(dname)
 logger = logging.getLogger(__name__)
 
 KEY_CLOSE = "q"
-KEY_START = "a"
 KEY_RIGHT = "right"
 KEY_LEFT = "left"
-KEY_ZOOM_IN = "+"
-KEY_ZOOM_OUT = "-"
+KEY_ZOOM_IN = "i"
+KEY_ZOOM_OUT = "o"
 KEY_HOLD_NOT_SNAP = "alt"
 
 HORIZONTAL_TAG = "x0"
@@ -36,6 +34,8 @@ LOW_TAG = "low"
 
 STD_COEFFICIENT = 2
 PEAK_SEARCH_DISTANCE = 50
+MOVING_AVG = 10
+INITIAL_WINDOW = 1000
 
 
 def _tag(tag, type):
@@ -55,25 +55,27 @@ def parse_cli():
 		description="Interactive plots that let user semi-manually select peaks",
 		formatter_class=argparse.RawDescriptionHelpFormatter,
 		epilog=textwrap.dedent(f"""\
+			Example:
+				./interactive.py --data-file ./clean.csv --peaks-file ./peaks.yaml -v
+
 			Keys:
-				{KEY_CLOSE} : close the window, save all peaks
-				{KEY_START} : start the selection, zoom to the first window, redraw
-				{KEY_LEFT}/{KEY_RIGHT} : move zoom window left and right
-				{KEY_ZOOM_IN}/{KEY_ZOOM_OUT} : zoom in and out (2x)
-				Hold {KEY_HOLD_NOT_SNAP} : while holding, current peak selection (red dot) will NOT snap to suggested peaks
+				"{KEY_CLOSE}" : close the window, save all peaks
+				"{KEY_LEFT}"/"{KEY_RIGHT}" : move zoom window left and right
+				"{KEY_ZOOM_IN}"/"{KEY_ZOOM_OUT}" : zoom in and out (2x)
+				Hold "{KEY_HOLD_NOT_SNAP}" : while holding, current peak selection (red dot) will NOT snap to suggested peaks
+				LEFT click to add/remove HIGH peak on the currently selected frame (red dot)
+				RIGHT click to add/remove LOW peak on the currently selected frame (red dot)
 		"""),
 	)
-	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=True, help="CSV data file to read.")
-	parser.add_argument("--peaks-file", dest="peaks_file", type=str, required=True, help="YAML peaks file. If exists, will read, else will create.")
-	parser.add_argument("--window", dest="window", type=int, default=1000, help="Length of zoom window in frames.")
-	parser.add_argument("--moving-avg", dest="moving_avg", type=int, default=10, help="Moving average lag")
+	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to CSV data file to read.")
+	parser.add_argument("--peaks-file", dest="peaks_file", type=str, required=True, help="path to YAML peaks file; if exists, will read, else will create.")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
 
 	args = parser.parse_args()
 
 	coloredlogs.install(level=logging.DEBUG if args.verbose else logging.INFO, logger=logger)
 
-	return args.data_file, args.peaks_file, args.moving_avg, args.window
+	return args.data_file, args.peaks_file
 
 
 def update_peaks_file(peaks, peaks_file_path):
@@ -103,8 +105,8 @@ def read_or_compute_peaks(frame, peaks_file_path):
 				logger.critical(exception)
 	else:
 		for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
-			peaks[_tag(tag, HIGH_TAG)] = find_peaks(frame[f"std_plus_{tag}"], height=2, distance=200, prominence=2)[0]
-			peaks[_tag(tag, LOW_TAG)] = np.array([])
+			peaks[_tag(tag, HIGH_TAG)] = find_peaks(frame[f"std_plus_{tag}"], True)
+			peaks[_tag(tag, LOW_TAG)] = find_peaks(frame[f"std_plus_{tag}"], False)
 		update_peaks_file(peaks, peaks_file_path)
 
 	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
@@ -137,6 +139,7 @@ def compute_segments(highs, lows):
 
 def main():
 
+	window = INITIAL_WINDOW
 	current_left_window_endpoint = 0
 	peak_selection = 0
 
@@ -145,7 +148,7 @@ def main():
 	current_pressed_keys = []
 	current_mouse_x = 0
 
-	data_file, peaks_file, moving_avg, window = parse_cli()
+	data_file, peaks_file = parse_cli()
 
 	frame = pd.read_csv(data_file)
 
@@ -154,10 +157,10 @@ def main():
 	figure, (subplot_horizontal, subplot_vertical) = plt.subplots(2)
 
 	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
-		frame[f"mavg_{moving_avg}_{tag}"] = frame[tag].rolling(moving_avg).mean()
+		frame[f"mavg_{MOVING_AVG}_{tag}"] = frame[tag].rolling(MOVING_AVG).mean()
 
-		frame[f"std_{tag}"] = frame[f"mavg_{moving_avg}_{tag}"].rolling(moving_avg).std()
-		frame[f"std_plus_{tag}"] = frame[f"std_{tag}"] * STD_COEFFICIENT + frame[f"mavg_{moving_avg}_{tag}"]
+		frame[f"std_{tag}"] = frame[f"mavg_{MOVING_AVG}_{tag}"].rolling(MOVING_AVG).std()
+		frame[f"std_plus_{tag}"] = frame[f"std_{tag}"] * STD_COEFFICIENT + frame[f"mavg_{MOVING_AVG}_{tag}"]
 
 	peaks = read_or_compute_peaks(frame, peaks_file)
 
@@ -171,11 +174,11 @@ def main():
 		for tag, subplot, title in [[HORIZONTAL_TAG, subplot_horizontal, "Horizontal"], [VERTICAL_TAG, subplot_vertical, "Vertical"]]:
 			subplot.cla()
 
-			left_endpoint = max(0, current_left_window_endpoint - int(0.5 * window))
-			right_endpoint = min(len(frame.index), current_left_window_endpoint + window + int(0.5 * window))
+			left_endpoint = max(0, current_left_window_endpoint - int(1.5 * window))
+			right_endpoint = min(len(frame.index), current_left_window_endpoint + window + int(1.5 * window))
 
 			subplot.plot(frame[tag][left_endpoint:right_endpoint], linewidth=0.5, label="Original Sanitized Data", color="darkslategray")
-			subplot.plot(frame[f"std_plus_{tag}"][left_endpoint:right_endpoint], label=f"{STD_COEFFICIENT} STD from {moving_avg} moving average", color="teal")
+			subplot.plot(frame[f"std_plus_{tag}"][left_endpoint:right_endpoint], label=f"{STD_COEFFICIENT} STD from {MOVING_AVG} moving average", color="teal")
 
 			peaks_in_range = {}
 			for type, color in [[HIGH_TAG, "orange"], [LOW_TAG, "blue"]]:
@@ -209,9 +212,7 @@ def main():
 		logger.debug(f"key pressed: {event.key}")
 		current_pressed_keys += [event.key]
 
-		if event.key == KEY_START:
-			current_left_window_endpoint = 0
-		elif event.key == KEY_RIGHT:
+		if event.key == KEY_RIGHT:
 			current_left_window_endpoint += int(window * 0.8)
 			current_left_window_endpoint = min(current_left_window_endpoint, len(frame.index) - 1)
 		elif event.key == KEY_LEFT:

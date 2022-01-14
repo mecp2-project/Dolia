@@ -103,7 +103,7 @@ def read_or_compute_peaks(frame, peaks_file_path):
 				logger.critical(exception)
 	else:
 		for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
-			peaks[_tag(tag, HIGH_TAG)] = find_peaks(frame[f"std_plus_{tag}"], height=2, distance=200)[0]
+			peaks[_tag(tag, HIGH_TAG)] = find_peaks(frame[f"std_plus_{tag}"], height=2, distance=200, prominence=2)[0]
 			peaks[_tag(tag, LOW_TAG)] = np.array([])
 		update_peaks_file(peaks, peaks_file_path)
 

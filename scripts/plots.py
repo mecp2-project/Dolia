@@ -31,7 +31,7 @@ def parse_cli():
 def main():
 	import pandas as pd
 	import matplotlib.pyplot as plt
-	from scipy.signal import find_peaks
+	from peaks import find_peaks
 	import matplotlib.colors as mcolors
 
 
@@ -50,57 +50,28 @@ def main():
 	frame["std_minus_y0"] = frame["roll_y0"] - frame["std_y0"] * std_coefficient
 	frame["std_minus_y0_flip"] = -(frame["std_minus_y0"]) + 200
 
-	peaks, _ = find_peaks(frame["std_plus_x0"], height=2, distance=200, prominence=2)
-	print(len(peaks))
+	horizontal_peaks = find_peaks(frame["std_plus_x0"], high=True)
+	print(len(horizontal_peaks))
 
-	peaks_y, _ = find_peaks(frame["std_plus_y0"], height=2, distance=200, prominence=2)
-	print(len(peaks_y))
+	vertical_peaks = find_peaks(frame["std_plus_y0"], high=True)
+	print(len(vertical_peaks))
 
-	peaks_y_flip, _ = find_peaks(frame["std_minus_y0_flip"], height=2, distance=200, prominence=2)
-	print(len(peaks_y_flip))
-
-	new_peaks = []
-	for peak in peaks:
-		if peak < 50 or peak > len(frame.index) - 50:
-			new_peaks += [peak]
-			continue
-		left_mean = frame["std_plus_x0"][peak - 50 : peak].mean()
-		right_mean = frame["std_plus_x0"][peak : peak + 50 ].mean()
-		# print(f"Left mean = {left_mean}", f"Right mean = {right_mean}", f"Peak = {peak}", f"keep = {right_mean > left_mean}")
-		if right_mean > left_mean:
-			new_peaks += [peak]
-
-	new_peaks_y = []
-	for peak in peaks_y:
-		if peak < 50 or peak > len(frame.index) - 50:
-			new_peaks_y += [peak]
-			continue
-		left_mean = frame["std_plus_y0"][peak - 50 : peak].mean()
-		right_mean = frame["std_plus_y0"][peak : peak + 50 ].mean()
-		if right_mean > left_mean:
-			new_peaks_y += [peak]
-
-	for peak in peaks_y_flip:
-		if peak < 50 or peak > len(frame.index) - 50:
-			new_peaks_y += [peak]
-			continue
-		left_mean = frame["std_minus_y0_flip"][peak - 50 : peak].mean()
-		right_mean = frame["std_minus_y0_flip"][peak : peak + 50 ].mean()
-		if right_mean > left_mean:
-			new_peaks_y += [peak]
+	vertical_peaks_low = find_peaks(frame["std_plus_y0"], high=False)
+	print(len(vertical_peaks_low))
 
 
 
 	fig, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
 	ax1.plot(frame["x0"], linewidth=0.5, label='Raw Data', color="black")
 	ax1.plot(frame["std_plus_x0"], color='teal', label='Rolling STD')
-	ax1.plot(new_peaks, frame["std_plus_x0"][new_peaks], "o", color="mediumvioletred", alpha=0.5)
+	ax1.plot(horizontal_peaks, frame["std_plus_x0"][horizontal_peaks], "o", color="mediumvioletred", alpha=0.5)
 	ax1.set_title('Horizontal Movements')
 	ax1.legend()
 
 	ax2.plot(frame["y0"], linewidth = 0.5, label = 'Raw Data', color = 'black')
 	ax2.plot(frame["std_plus_y0"], color='teal', label='Rolling STD')
-	ax2.plot(new_peaks_y, frame["std_plus_y0"][new_peaks_y], "o", color="mediumvioletred", alpha=0.5)
+	ax2.plot(vertical_peaks, frame["std_plus_y0"][vertical_peaks], "o", color="mediumvioletred", alpha=0.5)
+	ax2.plot(vertical_peaks_low, frame["std_plus_y0"][vertical_peaks_low], "o", color="mediumvioletred", alpha=0.5)
 	ax2.set_title('Vertical Movements')
 	fig.text(0.06, 0.5, 'Pixels', ha='center', va='center', rotation='vertical')
 	ax2.legend()

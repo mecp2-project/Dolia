@@ -33,8 +33,6 @@ VERTICAL_TAG = "y0"
 HIGH_TAG = "high"
 LOW_TAG = "low"
 
-# the number of STD's to add to moving average
-STD_COEFFICIENT = 2
 # when hovering with mouse, the algorithm will look at this many frames to find something to snap to (e.g. existing peak)
 PEAK_SEARCH_DISTANCE = 50
 # the lag of the moving average
@@ -129,7 +127,7 @@ def read_or_compute_peaks(frame, peaks_file_path):
 	else:
 		for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
 			for type in [HIGH_TAG, LOW_TAG]:
-				peaks[_tag(tag, type)] = find_peaks(frame[f"std_plus_{tag}"], type == HIGH_TAG)
+				peaks[_tag(tag, type)] = find_peaks(frame[f"mavg_{MOVING_AVG}_{tag}"], type == HIGH_TAG)
 		update_peaks_file(peaks, peaks_file_path)
 
 	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
@@ -207,12 +205,10 @@ def main():
 
 	figure, (subplot_horizontal, subplot_vertical) = plt.subplots(2)
 
-	# compute moving average, rolling STD and average + coefficient STD series
+	# compute moving averages
 	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
 		frame[f"mavg_{MOVING_AVG}_{tag}"] = frame[tag].rolling(MOVING_AVG).mean()
-
-		frame[f"std_{tag}"] = frame[f"mavg_{MOVING_AVG}_{tag}"].rolling(MOVING_AVG).std()
-		frame[f"std_plus_{tag}"] = frame[f"std_{tag}"] * STD_COEFFICIENT + frame[f"mavg_{MOVING_AVG}_{tag}"]
+		frame[f"mavg_{MOVING_AVG}_{tag}_shifted"] = frame[f"mavg_{MOVING_AVG}_{tag}"].shift(-int(MOVING_AVG / 2))
 
 	# get all peaks
 	peaks = read_or_compute_peaks(frame, peaks_file)
@@ -226,7 +222,7 @@ def main():
 
 		For both directions (horizontal and vertical), do this.
 		Extract data for the viewable window plus wide margins.
-		Plot original data and STD series, high/low peaks, segments and currently selected frame marker (red dot).
+		Plot original data and moving average series, high/low peaks, segments and currently selected frame marker (red dot).
 		"""
 
 		nonlocal background
@@ -239,15 +235,15 @@ def main():
 			left_endpoint = max(0, current_left_window_endpoint - int(1.5 * window))
 			right_endpoint = min(len(frame.index), current_left_window_endpoint + window + int(1.5 * window))
 
-			# plot original data and STD series
+			# plot original data and moving average series
 			subplot.plot(frame[tag][left_endpoint:right_endpoint], linewidth=0.5, label="Original Sanitized Data", color="darkslategray")
-			subplot.plot(frame[f"std_plus_{tag}"][left_endpoint:right_endpoint], label=f"{STD_COEFFICIENT} STD from {MOVING_AVG} moving average", color="teal")
+			subplot.plot(frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][left_endpoint:right_endpoint], label=f"{MOVING_AVG} moving average half-shifted", color="teal")
 
 			# plot current peaks, high and low
 			peaks_in_range = {}
 			for type, color in [[HIGH_TAG, "orange"], [LOW_TAG, "blue"]]:
 				peaks_in_range[type] = peaks[_tag(tag, type)][(peaks[_tag(tag, type)] >= left_endpoint) & (peaks[_tag(tag, type)] <= right_endpoint)]
-				subplot.plot(peaks_in_range[type], frame[f"std_plus_{tag}"][peaks_in_range[type]], "o", color=color, alpha=0.5)
+				subplot.plot(peaks_in_range[type], frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][peaks_in_range[type]], "o", color=color, alpha=0.5)
 
 			# compute segments for current window and plot them
 			segments = compute_segments(peaks_in_range[HIGH_TAG].tolist(), peaks_in_range[LOW_TAG].tolist())
@@ -259,7 +255,7 @@ def main():
 
 			# set viewframe
 			subplot.set_xlim(current_left_window_endpoint, current_left_window_endpoint + window)
-			subplot.set_ylim(frame[f"std_plus_{tag}"][current_left_window_endpoint:current_left_window_endpoint + window].min() * 0.9, frame[f"std_plus_{tag}"][current_left_window_endpoint:current_left_window_endpoint + window].max() * 1.1)
+			subplot.set_ylim(frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][current_left_window_endpoint:current_left_window_endpoint + window].min() * 0.9, frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][current_left_window_endpoint:current_left_window_endpoint + window].max() * 1.1)
 
 			subplot.set_title(f"{title} Movements")
 			subplot.legend()
@@ -316,7 +312,7 @@ def main():
 				return peak
 
 			# get next PEAK_SEARCH_DISTANCE points
-			points = frame[f"std_plus_{tag}"][current:min(len(frame.index), current + PEAK_SEARCH_DISTANCE)].tolist()
+			points = frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][current:min(len(frame.index), current + PEAK_SEARCH_DISTANCE)].tolist()
 
 			# if found peak, snap to it
 			for x in range(0, len(points) - 2):
@@ -344,7 +340,7 @@ def main():
 					peak_selection = compute_nearest_peak(tag, int(event.xdata))
 
 					# modify existing peak selection plot, set marker
-					active_peak_plots[tag].set_data([peak_selection], [frame[f"std_plus_{tag}"][peak_selection]])
+					active_peak_plots[tag].set_data([peak_selection], [frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][peak_selection]])
 					if peak_selection in peaks[_tag(tag, HIGH_TAG)] or peak_selection in peaks[_tag(tag, LOW_TAG)]:
 						active_peak_plots[tag].set(marker="x")
 					else:

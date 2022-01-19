@@ -22,6 +22,8 @@ KEY_ZOOM_IN = "i"
 KEY_ZOOM_OUT = "o"
 KEY_UNDO = "z"
 KEY_HOLD_NOT_SNAP = "alt"
+BUTTON_LEFT = 8
+BUTTON_RIGHT = 9
 
 HORIZONTAL_TAG = "x0"
 VERTICAL_TAG = "y0"
@@ -254,11 +256,11 @@ def main():
 				# non_segment_peaks is set difference of all peaks minus segment_peaks
 				non_segment_peaks = np.setdiff1d(peaks_in_range[type], segment_peaks, assume_unique=True)
 				# plot these two peak types differently
-				subplot.plot(segment_peaks, frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][segment_peaks], "o", color=color, alpha=0.5)
+				subplot.plot(segment_peaks, frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][segment_peaks], "o", color=color, alpha=0.5, markersize=10)
 				subplot.plot(non_segment_peaks, frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][non_segment_peaks], "X", color=color, alpha=0.8, markersize=10)
 
 			# create empty plot for current frame (to be red dot)
-			(active_peak_plots[tag], ) = subplot.plot([], [], marker="o", color="red", alpha=0.75, animated=True)
+			(active_peak_plots[tag], ) = subplot.plot([], [], marker="o", color="red", alpha=0.75, animated=True, markersize=10)
 
 			# set viewframe
 			subplot.set_xlim(current_left_window_endpoint, current_left_window_endpoint + window)
@@ -314,9 +316,11 @@ def main():
 		elif event.key == KEY_ZOOM_IN:
 			# shrink window
 			window = int(window / 2)
+			window = max(20, window)
 		elif event.key == KEY_ZOOM_OUT:
 			# expand window
 			window = int(window * 2)
+			window = min(len(frame.index), window)
 		elif event.key == KEY_UNDO:
 			add_or_remove_peak(*last_peak)
 		redraw()
@@ -384,18 +388,39 @@ def main():
 
 	# invoke on mouse click
 	def on_click_handler(event):
+		nonlocal window
+		nonlocal current_left_window_endpoint
+
 		# do nothing for double click
 		if not event.dblclick:
-			for type, button in [[HIGH_TYPE, 1], [LOW_TYPE, 3]]:
-				# only trigger for left and right buttons
-				if event.button == button:
-					for tag, subplot in [[HORIZONTAL_TAG, subplot_horizontal], [VERTICAL_TAG, subplot_vertical]]:
-						# if mouse is within the plot canvas
-						if event.inaxes == subplot:
-							# if existing peak selected, remove it, otherwise, add
-							add_or_remove_peak(peak_selection, tag, type)
-							redraw()
-							break
+			if event.button == 2:
+				if KEY_HOLD_NOT_SNAP in current_pressed_keys:
+					# expand window
+					window = int(window * 2)
+					window = min(len(frame.index), window)
+				else:
+					# shrink window
+					window = int(window / 2)
+					window = max(20, window)
+			if event.button == BUTTON_RIGHT:
+				# shift window right
+				current_left_window_endpoint += int(window * 0.8)
+				current_left_window_endpoint = min(current_left_window_endpoint, len(frame.index) - 1)
+			elif event.button == BUTTON_LEFT:
+				# shift window left
+				current_left_window_endpoint -= int(window * 0.8)
+				current_left_window_endpoint = max(current_left_window_endpoint, 0)
+			elif event.button == 1 or event.button == 3:
+				for type, button in [[HIGH_TYPE, 1], [LOW_TYPE, 3]]:
+					# only trigger for left and right buttons
+					if event.button == button:
+						for tag, subplot in [[HORIZONTAL_TAG, subplot_horizontal], [VERTICAL_TAG, subplot_vertical]]:
+							# if mouse is within the plot canvas
+							if event.inaxes == subplot:
+								# if existing peak selected, remove it, otherwise, add
+								add_or_remove_peak(peak_selection, tag, type)
+								break
+			redraw()
 
 	# register event listeners
 	figure.canvas.mpl_connect("motion_notify_event", motion_notify_handler)

@@ -25,8 +25,8 @@ KEY_HOLD_NOT_SNAP = "alt"
 
 HORIZONTAL_TAG = "x0"
 VERTICAL_TAG = "y0"
-HIGH_TAG = "high"
-LOW_TAG = "low"
+HIGH_TYPE = "high"
+LOW_TYPE = "low"
 
 # when hovering with mouse, the algorithm will look at this many frames to find something to snap to (e.g. existing peak)
 PEAK_SEARCH_DISTANCE = 50
@@ -65,6 +65,7 @@ def parse_cli():
 				Hold "{KEY_HOLD_NOT_SNAP}" : while holding, current peak selection (red dot) will NOT snap to suggested peaks
 				LEFT click to add/remove HIGH peak on the currently selected frame (red dot)
 				RIGHT click to add/remove LOW peak on the currently selected frame (red dot)
+				"{KEY_UNDO}" : to add/remove last removed/added peak
 		"""),
 	)
 	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to CSV data file to read.")
@@ -89,7 +90,7 @@ def update_peaks_file(peaks, peaks_file_path):
 
 	peaks_as_lists = {}
 	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
-		for type in [HIGH_TAG, LOW_TAG]:
+		for type in [HIGH_TYPE, LOW_TYPE]:
 			# need to convert numpy array to list, or it will put internal structure in the file
 			peaks_as_lists[_tag(tag, type)] = peaks[_tag(tag, type)].tolist()
 
@@ -114,19 +115,19 @@ def read_or_compute_peaks(frame, peaks_file_path):
 			try:
 				content = yaml.safe_load(peaks_file)
 				for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
-					for type in [HIGH_TAG, LOW_TAG]:
+					for type in [HIGH_TYPE, LOW_TYPE]:
 						# what we read is list, but we expect numpy array in the rest of the script
 						peaks[_tag(tag, type)] = np.array(content[_tag(tag, type)])
 			except yaml.YAMLError as exception:
 				logger.critical(exception)
 	else:
 		for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
-			for type in [HIGH_TAG, LOW_TAG]:
-				peaks[_tag(tag, type)] = find_peaks(frame[f"mavg_{MOVING_AVG}_{tag}"], type == HIGH_TAG)
+			for type in [HIGH_TYPE, LOW_TYPE]:
+				peaks[_tag(tag, type)] = find_peaks(frame[f"mavg_{MOVING_AVG}_{tag}"], type == HIGH_TYPE)
 		update_peaks_file(peaks, peaks_file_path)
 
 	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
-		for type in [HIGH_TAG, LOW_TAG]:
+		for type in [HIGH_TYPE, LOW_TYPE]:
 			logger.info(f"Found {len(peaks[f'{tag}_{type}'])} peaks for {f'{tag}_{type}'}")
 
 	return peaks
@@ -144,8 +145,8 @@ def compute_segments(highs, lows):
 		return []
 
 	# attach the origin to a peak value
-	highs = list(map(lambda x: {"value": x, "tag": HIGH_TAG}, highs))
-	lows = list(map(lambda x: {"value": x, "tag": LOW_TAG}, lows))
+	highs = list(map(lambda x: {"value": x, "tag": HIGH_TYPE}, highs))
+	lows = list(map(lambda x: {"value": x, "tag": LOW_TYPE}, lows))
 
 	# merge peaks
 	both = highs + lows
@@ -158,7 +159,7 @@ def compute_segments(highs, lows):
 	# for every two consecutive peaks, if they form a segment, save it
 	for i in range(len(both)):
 		if i != 0:
-			if both[i - 1]["tag"] == HIGH_TAG and both[i]["tag"] == LOW_TAG:
+			if both[i - 1]["tag"] == HIGH_TYPE and both[i]["tag"] == LOW_TYPE:
 				segments += [[both[i - 1]["value"], both[i]["value"]]]
 
 	return segments
@@ -236,16 +237,25 @@ def main():
 			subplot.plot(frame[tag][left_endpoint:right_endpoint], linewidth=0.5, label="Original Sanitized Data", color="darkslategray")
 			subplot.plot(frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][left_endpoint:right_endpoint], label=f"{MOVING_AVG} moving average half-shifted", color="teal")
 
-			# plot current peaks, high and low
+			# filter only the peak in the current range
 			peaks_in_range = {}
-			for type, color in [[HIGH_TAG, "orange"], [LOW_TAG, "blue"]]:
+			for type in [HIGH_TYPE, LOW_TYPE]:
 				peaks_in_range[type] = peaks[_tag(tag, type)][(peaks[_tag(tag, type)] >= left_endpoint) & (peaks[_tag(tag, type)] <= right_endpoint)]
-				subplot.plot(peaks_in_range[type], frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][peaks_in_range[type]], "o", color=color, alpha=0.5)
 
 			# compute segments for current window and plot them
-			segments = compute_segments(peaks_in_range[HIGH_TAG].tolist(), peaks_in_range[LOW_TAG].tolist())
+			segments = compute_segments(peaks_in_range[HIGH_TYPE].tolist(), peaks_in_range[LOW_TYPE].tolist())
 			for start, end in segments:
 				subplot.axvspan(start, end, color='green', alpha=0.3)
+
+			# plot current peaks, high and low; plot peaks that are a part of a segment differently
+			for type, color in [[HIGH_TYPE, "orange"], [LOW_TYPE, "blue"]]:
+				# extract only "tag" peaks into segment_peaks
+				segment_peaks = list(map(lambda x: x[0 if type == HIGH_TYPE else 1], segments))
+				# non_segment_peaks is set difference of all peaks minus segment_peaks
+				non_segment_peaks = np.setdiff1d(peaks_in_range[type], segment_peaks, assume_unique=True)
+				# plot these two peak types differently
+				subplot.plot(segment_peaks, frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][segment_peaks], "o", color=color, alpha=0.5)
+				subplot.plot(non_segment_peaks, frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][non_segment_peaks], "X", color=color, alpha=0.8, markersize=10)
 
 			# create empty plot for current frame (to be red dot)
 			(active_peak_plots[tag], ) = subplot.plot([], [], marker="o", color="red", alpha=0.75, animated=True)
@@ -334,7 +344,7 @@ def main():
 			# if found peak, snap to it
 			for x in range(0, len(points) - 2):
 				peak = x + current
-				if peak in peaks[_tag(tag, HIGH_TAG)] or peak in peaks[_tag(tag, LOW_TAG)]:
+				if peak in peaks[_tag(tag, HIGH_TYPE)] or peak in peaks[_tag(tag, LOW_TYPE)]:
 					return peak
 
 			# if found downturn, snap to it
@@ -358,7 +368,7 @@ def main():
 
 					# modify existing peak selection plot, set marker
 					active_peak_plots[tag].set_data([peak_selection], [frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][peak_selection]])
-					if peak_selection in peaks[_tag(tag, HIGH_TAG)] or peak_selection in peaks[_tag(tag, LOW_TAG)]:
+					if peak_selection in peaks[_tag(tag, HIGH_TYPE)] or peak_selection in peaks[_tag(tag, LOW_TYPE)]:
 						active_peak_plots[tag].set(marker="x")
 					else:
 						active_peak_plots[tag].set(marker="o")
@@ -376,7 +386,7 @@ def main():
 	def on_click_handler(event):
 		# do nothing for double click
 		if not event.dblclick:
-			for type, button in [[HIGH_TAG, 1], [LOW_TAG, 3]]:
+			for type, button in [[HIGH_TYPE, 1], [LOW_TYPE, 3]]:
 				# only trigger for left and right buttons
 				if event.button == button:
 					for tag, subplot in [[HORIZONTAL_TAG, subplot_horizontal], [VERTICAL_TAG, subplot_vertical]]:

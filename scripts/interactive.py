@@ -12,12 +12,6 @@ import textwrap
 import yaml
 from peaks import find_peaks
 
-# change directory to that of the script file;
-# this way, the relative paths will work as expected
-abspath = os.path.abspath(__file__)
-dname = os.path.dirname(abspath)
-os.chdir(dname)
-
 logger = logging.getLogger(__name__)
 
 # Constants
@@ -26,6 +20,7 @@ KEY_RIGHT = "right"
 KEY_LEFT = "left"
 KEY_ZOOM_IN = "i"
 KEY_ZOOM_OUT = "o"
+KEY_UNDO = "z"
 KEY_HOLD_NOT_SNAP = "alt"
 
 HORIZONTAL_TAG = "x0"
@@ -186,6 +181,8 @@ def main():
 	current_left_window_endpoint = 0
 	# current selected frame (to add/remove a peak)
 	peak_selection = 0
+	# last added or removed peak (peak frame, tag, type)
+	last_peak = None
 
 	# a variable to store a snapshot of rendered UI to be able to restore without redrawing
 	background = None
@@ -264,6 +261,24 @@ def main():
 		figure.canvas.draw()
 		background = figure.canvas.copy_from_bbox(figure.bbox)
 
+	def add_or_remove_peak(peak, tag, type):
+		"""
+		A helper to update the current peaks and update the file.
+
+		Will also remember the last added or removed peak.
+		"""
+		nonlocal last_peak
+
+		if peak in peaks[_tag(tag, type)]:
+			peaks[_tag(tag, type)] = np.delete(peaks[_tag(tag, type)], peaks[_tag(tag, type)] == peak)
+			logger.debug(f"Removed {type} peak: {peak}")
+		else:
+			peaks[_tag(tag, type)] = np.append(peaks[_tag(tag, type)], peak)
+			logger.debug(f"Added {type} peak: {peak}")
+		# modify peaks file immediately
+		update_peaks_file(peaks, peaks_file)
+		last_peak = (peak, tag, type)
+
 	# remove key from pressed array on release
 	def key_release_handler(event):
 		if event.key in current_pressed_keys:
@@ -292,6 +307,8 @@ def main():
 		elif event.key == KEY_ZOOM_OUT:
 			# expand window
 			window = int(window * 2)
+		elif event.key == KEY_UNDO:
+			add_or_remove_peak(*last_peak)
 		redraw()
 
 	# invoke on mouse movement
@@ -366,14 +383,7 @@ def main():
 						# if mouse is within the plot canvas
 						if event.inaxes == subplot:
 							# if existing peak selected, remove it, otherwise, add
-							if peak_selection in peaks[_tag(tag, type)]:
-								peaks[_tag(tag, type)] = np.delete(peaks[_tag(tag, type)], peaks[_tag(tag, type)] == peak_selection)
-								logger.debug(f"Removed {type} peak: {peak_selection}")
-							else:
-								peaks[_tag(tag, type)] = np.append(peaks[_tag(tag, type)], peak_selection)
-								logger.debug(f"Added {type} peak: {peak_selection}")
-							# modify peaks file immediately
-							update_peaks_file(peaks, peaks_file)
+							add_or_remove_peak(peak_selection, tag, type)
 							redraw()
 							break
 

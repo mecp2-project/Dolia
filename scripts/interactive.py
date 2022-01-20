@@ -11,8 +11,7 @@ from pathlib import Path
 import textwrap
 import yaml
 from peaks import find_peaks
-
-logger = logging.getLogger(__name__)
+from utility import HORIZONTAL_TAG, VERTICAL_TAG, HIGH_TYPE, LOW_TYPE, logger, _tag, is_valid_file, peaks_to_segments
 
 # Constants
 KEY_CLOSE = "q"
@@ -25,11 +24,6 @@ KEY_HOLD_NOT_SNAP = "alt"
 BUTTON_LEFT = 8
 BUTTON_RIGHT = 9
 
-HORIZONTAL_TAG = "x0"
-VERTICAL_TAG = "y0"
-HIGH_TYPE = "high"
-LOW_TYPE = "low"
-
 # when hovering with mouse, the algorithm will look at this many frames to find something to snap to (e.g. existing peak)
 PEAK_SEARCH_DISTANCE = 50
 # the lag of the moving average
@@ -38,20 +32,8 @@ MOVING_AVG = 10
 INITIAL_WINDOW = 1000
 
 
-def _tag(tag, type):
-	"""A helper to construct the key from tag and type (e.g. x0_high)"""
-	return f"{tag}_{type}"
-
-
 def parse_cli():
 	"""Parse command line arguments and return them as values"""
-
-	# https://stackoverflow.com/a/11541450/1644554
-	def is_valid_file(parser, arg):
-		if not os.path.exists(arg):
-			parser.error("The file %s does not exist!" % arg)
-		else:
-			return arg
 
 	parser = argparse.ArgumentParser(
 		description="Interactive plots that let user semi-manually select peaks",
@@ -135,38 +117,6 @@ def read_or_compute_peaks(frame, peaks_file_path):
 	return peaks
 
 
-def compute_segments(highs, lows):
-	"""
-	Derive full segments from the lists of high and low peaks.
-
-	A segment is a pair of peaks such that the first one is high, the second is low, and there are no other peaks in between.
-	"""
-
-	# short circuit if one of the lists is empty (no segments can exist)
-	if len(highs) == 0 or len(lows) == 0:
-		return []
-
-	# attach the origin to a peak value
-	highs = list(map(lambda x: {"value": x, "tag": HIGH_TYPE}, highs))
-	lows = list(map(lambda x: {"value": x, "tag": LOW_TYPE}, lows))
-
-	# merge peaks
-	both = highs + lows
-
-	# sort by value (but keep origin)
-	both.sort(key=lambda x: x["value"])
-
-	segments = []
-
-	# for every two consecutive peaks, if they form a segment, save it
-	for i in range(len(both)):
-		if i != 0:
-			if both[i - 1]["tag"] == HIGH_TYPE and both[i]["tag"] == LOW_TYPE:
-				segments += [[both[i - 1]["value"], both[i]["value"]]]
-
-	return segments
-
-
 def main():
 	"""
 	Main event loop.
@@ -245,7 +195,7 @@ def main():
 				peaks_in_range[type] = peaks[_tag(tag, type)][(peaks[_tag(tag, type)] >= left_endpoint) & (peaks[_tag(tag, type)] <= right_endpoint)]
 
 			# compute segments for current window and plot them
-			segments = compute_segments(peaks_in_range[HIGH_TYPE].tolist(), peaks_in_range[LOW_TYPE].tolist())
+			segments = peaks_to_segments(peaks_in_range[HIGH_TYPE].tolist(), peaks_in_range[LOW_TYPE].tolist())
 			for start, end in segments:
 				subplot.axvspan(start, end, color='green', alpha=0.3)
 

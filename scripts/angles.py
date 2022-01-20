@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-
-import os
-import argparse
-import coloredlogs, logging
-from pathlib import Path
-import yaml
-import numpy as np
-
-HORIZONTAL_TAG = "x0"
-VERTICAL_TAG = "y0"
-HIGH_TYPE = "high"
-LOW_TYPE = "low"
-
-logger = logging.getLogger(__name__)
 """
 Looking for Horizontal and Vertical segments
 If Vertical does not have corresponding Horizontal --- taking Vertical
@@ -30,20 +16,15 @@ Output:
 	2. Histogram of angle distribution
 """
 
-
-def _tag(tag, type):
-	"""A helper to construct the key from tag and type (e.g. x0_high)"""
-	return f"{tag}_{type}"
+import argparse
+import coloredlogs, logging
+from pathlib import Path
+import yaml
+import numpy as np
+from utility import HORIZONTAL_TAG, VERTICAL_TAG, HIGH_TYPE, LOW_TYPE, logger, _tag, is_valid_file, peaks_to_segments
 
 
 def parse_cli():
-
-	# https://stackoverflow.com/a/11541450/1644554
-	def is_valid_file(parser, arg):
-		if not os.path.exists(arg):
-			parser.error("The file %s does not exist!" % arg)
-		else:
-			return arg
 
 	# All input that is needed
 	parser = argparse.ArgumentParser(description="Angles (Plots the distribution of angles)")
@@ -72,32 +53,6 @@ def compute_segments(peaks_file_path):
 					peaks[_tag(tag, type)] = np.array(content[_tag(tag, type)])
 		except yaml.YAMLError as exception:
 			logger.critical(exception)
-
-	def peaks_to_segments(highs, lows):
-
-		# short circuit if one of the lists is empty (no segments can exist)
-		if len(highs) == 0 or len(lows) == 0:
-			return []
-
-		# attach the origin to a peak value
-		highs = list(map(lambda x: {"value": x, "tag": HIGH_TYPE}, highs))
-		lows = list(map(lambda x: {"value": x, "tag": LOW_TYPE}, lows))
-
-		# merge peaks
-		both = highs + lows
-
-		# sort by value (but keep origin)
-		both.sort(key=lambda x: x["value"])
-
-		segments = []
-
-		# for every two consecutive peaks, if they form a segment, save it
-		for i in range(len(both)):
-			if i != 0:
-				if both[i - 1]["tag"] == HIGH_TYPE and both[i]["tag"] == LOW_TYPE:
-					segments += [[both[i - 1]["value"], both[i]["value"]]]
-
-		return segments
 
 	horizontal_segments = peaks_to_segments(peaks[_tag(HORIZONTAL_TAG, HIGH_TYPE)], peaks[_tag(HORIZONTAL_TAG, LOW_TYPE)])
 	vertical_segments = peaks_to_segments(peaks[_tag(VERTICAL_TAG, HIGH_TYPE)], peaks[_tag(VERTICAL_TAG, LOW_TYPE)])

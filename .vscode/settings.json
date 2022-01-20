@@ -1,8 +1,10 @@
 {
     "python.formatting.provider": "yapf",
     "cSpell.words": [
+        "bliting",
         "bokeh",
         "chdir",
+        "daria",
         "dname",
         "inplace",
         "iterrows",

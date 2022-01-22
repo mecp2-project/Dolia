@@ -3,4 +3,4 @@ matplotlib
 numpy
 coloredlogs
 scipy
-yaml
+pyyaml

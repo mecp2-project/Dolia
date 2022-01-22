@@ -232,7 +232,8 @@ def main():
 		nonlocal last_peak
 
 		if peak in peaks[_tag(tag, type)]:
-			peaks[_tag(tag, type)] = np.delete(peaks[_tag(tag, type)], peaks[_tag(tag, type)] == peak)
+			peak_index = np.argwhere(peaks[_tag(tag, type)] == peak)
+			peaks[_tag(tag, type)] = np.delete(peaks[_tag(tag, type)], peak_index)
 			logger.debug(f"Removed {type} peak: {peak}")
 		else:
 			peaks[_tag(tag, type)] = np.append(peaks[_tag(tag, type)], peak)

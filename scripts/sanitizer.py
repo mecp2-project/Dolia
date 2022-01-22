@@ -29,11 +29,6 @@ TODO:
 import os
 import logging
 
-# change directory to that of the script file
-abspath = os.path.abspath(__file__)
-dname = os.path.dirname(abspath)
-os.chdir(dname)
-
 
 # parse command-line options
 def parse_cli():

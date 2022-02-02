@@ -28,6 +28,7 @@ TODO:
 
 import os
 import logging
+from pathlib import Path
 
 
 # parse command-line options
@@ -163,14 +164,17 @@ def main():
 
 	logging.info("Smoothed the plot")
 
-	frame["ellipse_area"] = (frame["rlong"]*frame["rshort"])*np.pi
+	frame["ellipse_area"] = (frame["rlong"] * frame["rshort"]) * np.pi
 	frame["roll_ellipse_area"] = frame["ellipse_area"].rolling(rolling).mean()  # rolling mean to smooth the plot
 
 	logging.info("Pupil area calculated and smoothed")
 
-	frame.to_csv('clean.csv')
+	dataset_path = Path(file)
+	dataset_name = dataset_path.stem
+	script_path = Path(__file__)
+	frame.to_csv(script_path.parent / ".." / "clean" / f"{dataset_name}_clean.csv")
 
-	logging.info("Written to CSV File (clean.csv)")
+	logging.info("Written to csv")
 
 
 if __name__ == "__main__":

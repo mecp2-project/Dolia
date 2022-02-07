@@ -2,6 +2,7 @@
 
 import os
 import logging
+from utility import is_valid_file
 
 
 def parse_cli():
@@ -9,6 +10,7 @@ def parse_cli():
 
 	# All input that is needed
 	parser = argparse.ArgumentParser(description="Plot (Plots sanitized data)")
+	parser.add_argument("--file_path", dest="file_path", type=lambda x: is_valid_file(parser, x), required=True, help="Path to the clean CSV file to read.")
 	parser.add_argument("--rolling", dest="rolling", type=int, default=10, help="Rolling mead value")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
 
@@ -20,7 +22,7 @@ def parse_cli():
 		datefmt='%a, %d %b %Y %H:%M:%S',
 	)
 
-	return args.rolling
+	return args.file_path, args.rolling
 
 
 def main():
@@ -29,9 +31,9 @@ def main():
 	from peaks import find_peaks
 	import matplotlib.colors as mcolors
 
-	rolling = parse_cli()
+	file_path, rolling = parse_cli()
 
-	frame = pd.read_csv('clean.csv')
+	frame = pd.read_csv(file_path)
 
 	fig, (ax_horizontal, ax_vertical, ax3) = plt.subplots(3, sharex=True)
 

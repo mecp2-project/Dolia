@@ -20,27 +20,19 @@ What it does:
 		Sliding window removes last outliers.
 		Rolling mean to smooth the plot and remove outliers.
 		Write CSV File
-
-TODO:
-		1. Output --- File Name (initial file name + clean)
-		2. Logging
 """
 
 import os
 import logging
 from pathlib import Path
+from tqdm import tqdm
+from utility import is_valid_file
+
 
 
 # parse command-line options
 def parse_cli():
 	import argparse
-
-	# https://stackoverflow.com/a/11541450/1644554
-	def is_valid_file(parser, arg):
-		if not os.path.exists(arg):
-			parser.error("The file %s does not exist!" % arg)
-		else:
-			return arg
 
 	def is_valid_percentile(parser, arg):
 		if not arg.isnumeric():
@@ -91,39 +83,33 @@ def main():
 
 	initial_data = []
 
-	for index, row in input.iterrows():
-		# Will log every ten percent. Store what constitutes 10% here.
-		ten_percent = int(len(input.index) / 10)
-		# Compute the progres (int terms of !0% increments) of the iteration right before this one.
-		prev_progress = int((index - 1) / ten_percent)
-		# Compute current progress as 10% increment
-		this_progress = int(index / ten_percent)
-		# If they differ, it means that in this iteration we have moved to the next 10% bracket, so log.
-		if this_progress != prev_progress:
-			logging.debug(f"Ellipses: {this_progress}0%")
+	with tqdm(total=len(input.index)) as pbar:
+		for index, row in input.iterrows():
 
-		low_likelihood = False
-		for column in likelihood_columns:
-			if row[column] < likelihood:
-				low_likelihood = True  # find low likelihood
-				break
-		if low_likelihood:
-			initial_data += [[np.nan, np.nan, np.nan, np.nan, np.nan]]  # if not within normal range --- remove
-		else:
-			status, ellipse = ellipse_fit(
-				np.array([row["x"], row["x.1"], row["x.2"], row["x.3"], row["x.4"], row["x.5"], row["x.6"], row["x.7"]]),  #ellipse.py fit the ellipse
-				np.array([row["y"], row["y.1"], row["y.2"], row["y.3"], row["y.4"], row["y.5"], row["y.6"], row["y.7"]]),
-			)
-			if status:
-				initial_data += [[
-					ellipse["X0_in"],
-					ellipse["Y0_in"],
-					ellipse["b"],
-					ellipse["a"],
-					ellipse["a"] / ellipse["b"],  #ellipse is found
-				]]
+			low_likelihood = False
+			for column in likelihood_columns:
+				if row[column] < likelihood:
+					low_likelihood = True  # find low likelihood
+					break
+			if low_likelihood:
+				initial_data += [[np.nan, np.nan, np.nan, np.nan, np.nan]]  # if not within normal range --- remove
 			else:
-				initial_data += [[np.nan, np.nan, np.nan, np.nan, np.nan]]  #ellipse is not found,
+				status, ellipse = ellipse_fit(
+					np.array([row["x"], row["x.1"], row["x.2"], row["x.3"], row["x.4"], row["x.5"], row["x.6"], row["x.7"]]),  #ellipse.py fit the ellipse
+					np.array([row["y"], row["y.1"], row["y.2"], row["y.3"], row["y.4"], row["y.5"], row["y.6"], row["y.7"]]),
+				)
+				if status:
+					initial_data += [[
+						ellipse["X0_in"],
+						ellipse["Y0_in"],
+						ellipse["b"],
+						ellipse["a"],
+						ellipse["a"] / ellipse["b"],  #ellipse is found
+					]]
+				else:
+					initial_data += [[np.nan, np.nan, np.nan, np.nan, np.nan]]  #ellipse is not found,
+
+			pbar.update(1)
 
 	frame = pd.DataFrame(initial_data, columns=['x0', 'y0', 'rlong', 'rshort', 'radius_ratio'])
 
@@ -169,12 +155,10 @@ def main():
 
 	logging.info("Pupil area calculated and smoothed")
 
-	dataset_path = Path(file)
-	dataset_name = dataset_path.stem
-	script_path = Path(__file__)
-	frame.to_csv(script_path.parent / ".." / "clean" / f"{dataset_name}_clean.csv")
+	output_path = Path(__file__).parent / ".." / "clean" / f"{Path(file).stem}_clean.csv"
+	frame.to_csv(output_path)
 
-	logging.info("Written to csv")
+	logging.info(f"Written to CSV: {output_path}")
 
 
 if __name__ == "__main__":

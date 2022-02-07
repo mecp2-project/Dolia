@@ -4,3 +4,4 @@ numpy
 coloredlogs
 scipy
 pyyaml
+tqdm

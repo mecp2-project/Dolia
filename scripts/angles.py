@@ -23,6 +23,10 @@ import yaml
 import numpy as np
 import pandas as pd
 from utility import HORIZONTAL_TAG, VERTICAL_TAG, HIGH_TYPE, LOW_TYPE, logger, _tag, is_valid_file, peaks_to_segments
+import matplotlib.pyplot as plt
+from matplotlib import colors
+from matplotlib.ticker import PercentFormatter
+import scipy.stats as st
 
 
 def parse_cli():
@@ -71,15 +75,17 @@ def compute_segments(peaks_file_path):
 	horizontal_intervals = pd.arrays.IntervalArray.from_tuples(horizontal_segments)
 	vertical_intervals = pd.arrays.IntervalArray.from_tuples(vertical_segments)
 
-	segments = list(map(lambda interval: [interval.left, interval.right], horizontal_intervals))
+	segments = list(map(lambda interval: (interval.left, interval.right), horizontal_intervals))
 
 	for vertical_interval in vertical_intervals:
 		if not np.any(horizontal_intervals.overlaps(vertical_interval)):
-			segments += [[vertical_interval.left, vertical_interval.right]]
+			segments += [(vertical_interval.left, vertical_interval.right)]
 
 	segments.sort(key=lambda x: x[0])
 
 	logger.info(f"Resulting segments: {len(segments)}")
+
+	return segments
 
 
 def main():
@@ -87,7 +93,27 @@ def main():
 	data_file, peaks_file, rolling = parse_cli()
 
 	frame = pd.read_csv(data_file)
-	compute_segments(peaks_file)
+	segments = compute_segments(peaks_file)
+
+	angles = []
+	for segment in segments:
+		x0 = frame["x0"][segment[0]]
+		y0 = frame["y0"][segment[0]]
+		x1 = frame["x0"][segment[1]]
+		y1 = frame["y0"][segment[1]]
+		rad_angle = np.arctan((x0 - x1) / (y0 - y1))
+		angle = abs(np.degrees(rad_angle))
+		angles += [angle]
+		logger.info(f"Angle is {angle}")
+
+
+
+	plt.hist(angles, density=False, bins=30)  # density=False would make counts
+	plt.ylabel('N')
+	plt.xlabel('Angles');
+	plt.show()
+
+
 
 
 if __name__ == "__main__":

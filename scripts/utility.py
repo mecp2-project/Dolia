@@ -27,6 +27,8 @@ def peaks_to_segments(highs, lows):
 	Derive full segments from the lists of high and low peaks.
 
 	A segment is a pair of peaks such that the first one is high, the second is low, and there are no other peaks in between.
+
+	The output is a tuple of lists of tuples representing segments.
 	"""
 
 	# short circuit if one of the lists is empty (no segments can exist)
@@ -49,6 +51,6 @@ def peaks_to_segments(highs, lows):
 	for i in range(len(both)):
 		if i != 0:
 			if both[i - 1]["tag"] == HIGH_TYPE and both[i]["tag"] == LOW_TYPE:
-				segments += [[both[i - 1]["value"], both[i]["value"]]]
+				segments += [(both[i - 1]["value"], both[i]["value"])]
 
 	return segments

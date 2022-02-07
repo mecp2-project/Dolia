@@ -21,6 +21,7 @@ import coloredlogs, logging
 from pathlib import Path
 import yaml
 import numpy as np
+import pandas as pd
 from utility import HORIZONTAL_TAG, VERTICAL_TAG, HIGH_TYPE, LOW_TYPE, logger, _tag, is_valid_file, peaks_to_segments
 
 
@@ -57,16 +58,31 @@ def compute_segments(peaks_file_path):
 	horizontal_segments = peaks_to_segments(peaks[_tag(HORIZONTAL_TAG, HIGH_TYPE)], peaks[_tag(HORIZONTAL_TAG, LOW_TYPE)])
 	vertical_segments = peaks_to_segments(peaks[_tag(VERTICAL_TAG, HIGH_TYPE)], peaks[_tag(VERTICAL_TAG, LOW_TYPE)])
 
-	logger.info(len(horizontal_segments))
-	logger.info(len(vertical_segments))
+	logger.info(f"Original horizontal segments: {len(horizontal_segments)}")
+	logger.info(f"Original vertical segments: {len(vertical_segments)}")
 
-	if len(peaks[_tag(HORIZONTAL_TAG, HIGH_TYPE)]) + len(peaks[_tag(HORIZONTAL_TAG, LOW_TYPE)]) + len(peaks[_tag(VERTICAL_TAG, HIGH_TYPE)]) + len(peaks[_tag(VERTICAL_TAG, LOW_TYPE)]) > (len(horizontal_segments) + len(vertical_segments)) * 2:
+	peak_sum = 0
+	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
+		for type in [HIGH_TYPE, LOW_TYPE]:
+			peak_sum = peak_sum + len(peaks[_tag(tag, type)])
+	if peak_sum > (len(horizontal_segments) + len(vertical_segments)) * 2:
 		logger.critical("Single peaks detected!")
 
+	horizontal_intervals = pd.arrays.IntervalArray.from_tuples(horizontal_segments)
+	vertical_intervals = pd.arrays.IntervalArray.from_tuples(vertical_segments)
+
+	segments = list(map(lambda interval: [interval.left, interval.right], horizontal_intervals))
+
+	for vertical_interval in vertical_intervals:
+		if not np.any(horizontal_intervals.overlaps(vertical_interval)):
+			segments += [[vertical_interval.left, vertical_interval.right]]
+
+	segments.sort(key=lambda x: x[0])
+
+	logger.info(f"Resulting segments: {len(segments)}")
 
 
 def main():
-	import pandas as pd
 
 	data_file, peaks_file, rolling = parse_cli()
 

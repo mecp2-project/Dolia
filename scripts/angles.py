@@ -102,13 +102,14 @@ def main():
 		x1 = frame["x0"][segment[1]]
 		y1 = frame["y0"][segment[1]]
 		rad_angle = np.arctan((x0 - x1) / (y0 - y1))
-		angle = abs(np.degrees(rad_angle))
+		angle = np.degrees(rad_angle)
 		angles += [angle]
-		logger.info(f"Angle is {angle}")
+	#	logger.info(f"Angle is {angle}")
 
 
 
-	plt.hist(angles, density=False, bins=30)  # density=False would make counts
+	plt.hist(angles, density=False, bins=30, label="Data")
+	plt.legend(loc="upper left") # density=False would make counts
 	plt.ylabel('N')
 	plt.xlabel('Angles');
 	plt.show()

@@ -30,6 +30,7 @@ import scipy.stats as st
 from scipy.stats import norm
 import statistics
 
+
 def parse_cli():
 
 	# All input that is needed

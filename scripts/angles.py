@@ -27,7 +27,8 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.ticker import PercentFormatter
 import scipy.stats as st
-
+from scipy.stats import norm
+import statistics
 
 def parse_cli():
 
@@ -104,12 +105,21 @@ def main():
 		rad_angle = np.arctan((x0 - x1) / (y0 - y1))
 		angle = np.degrees(rad_angle)
 		angles += [angle]
+		#df = pd.DataFrame(angles)
+		#df.to_csv('auto-2/angle-l.csv')
+
 	#	logger.info(f"Angle is {angle}")
 
+	mu, std = norm.fit(angles)
 
-
-	plt.hist(angles, density=False, bins=30, label="Data")
-	plt.legend(loc="upper left") # density=False would make counts
+	plt.hist(angles, bins=40, density=True)
+	xmin, xmax = plt.xlim()
+	x = np.linspace(xmin, xmax)
+	p = norm.pdf(x, mu, std)
+	plt.plot(x, p, 'k', linewidth=2)
+	plt.plot(x, p, 'k', linewidth=2)
+	title = "Fit Values: {:.2f} and {:.2f}".format(mu, std)
+	plt.title(title)
 	plt.ylabel('N')
 	plt.xlabel('Angles');
 	plt.show()

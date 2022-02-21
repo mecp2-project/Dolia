@@ -30,6 +30,7 @@ import scipy.stats as st
 from scipy.stats import norm
 import statistics
 import statsmodels.api as sm
+import scipy.signal as signal
 
 
 def parse_cli():
@@ -115,11 +116,11 @@ def main():
 	plt.hist(np_angles, bins=40, density=True)
 
 	grid = np.linspace(-90, 90, 1000)
-	for bw_type in ["normal_reference", "cv_ml", "cv_ls"]:
-		distribution = sm.nonparametric.KDEMultivariate([np_angles], var_type='c', bw=bw_type)
-		pdf = distribution.pdf(grid)
-		plt.plot(grid, pdf, lw=3)
-
+	distribution = sm.nonparametric.KDEMultivariate([np_angles], var_type = 'c', bw = 'normal_reference')
+	pdf = distribution.pdf(grid)
+	peak = signal.find_peaks(pdf, prominence=2)[0]
+	plt.plot(grid, pdf, lw=3)
+	plt.plot(peak,"o", color = 'red')
 	plt.ylabel('Probability')
 	plt.xlabel('Angles')
 	plt.show()

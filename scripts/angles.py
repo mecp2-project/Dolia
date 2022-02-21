@@ -29,6 +29,7 @@ from matplotlib.ticker import PercentFormatter
 import scipy.stats as st
 from scipy.stats import norm
 import statistics
+import statsmodels.api as sm
 
 
 def parse_cli():
@@ -103,29 +104,25 @@ def main():
 		y0 = frame["y0"][segment[0]]
 		x1 = frame["x0"][segment[1]]
 		y1 = frame["y0"][segment[1]]
-		rad_angle = np.arctan((x0 - x1) / (y0 - y1))
-		angle = np.degrees(rad_angle)
+		angle = np.degrees(np.arctan((x0 - x1) / (y0 - y1)))
 		angles += [angle]
 		#df = pd.DataFrame(angles)
 		#df.to_csv('auto-2/angle-l.csv')
 
-	#	logger.info(f"Angle is {angle}")
+	logger.info(f"Angles computed")
 
-	mu, std = norm.fit(angles)
+	np_angles = np.array(angles)
+	plt.hist(np_angles, bins=40, density=True)
 
-	plt.hist(angles, bins=40, density=True)
-	xmin, xmax = plt.xlim()
-	x = np.linspace(xmin, xmax)
-	p = norm.pdf(x, mu, std)
-	plt.plot(x, p, 'k', linewidth=2)
-	plt.plot(x, p, 'k', linewidth=2)
-	title = "Fit Values: {:.2f} and {:.2f}".format(mu, std)
-	plt.title(title)
-	plt.ylabel('N')
-	plt.xlabel('Angles');
+	grid = np.linspace(-90, 90, 1000)
+	for bw_type in ["normal_reference", "cv_ml", "cv_ls"]:
+		distribution = sm.nonparametric.KDEMultivariate([np_angles], var_type='c', bw=bw_type)
+		pdf = distribution.pdf(grid)
+		plt.plot(grid, pdf, lw=3)
+
+	plt.ylabel('Probability')
+	plt.xlabel('Angles')
 	plt.show()
-
-
 
 
 if __name__ == "__main__":

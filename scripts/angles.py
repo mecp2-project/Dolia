@@ -40,6 +40,26 @@ def parse_cli():
 	return Path(args.data_file), Path(args.peaks_file), Path(args.angles_file)
 
 
+def find_single_peaks(peaks, horizontal_segments, vertical_segments):
+	"""
+	Returns the frame numbers of all detected single peaks split into horizontal and vertical.
+
+	It first creates the sets (unordered collection with no duplicates) of original peaks and peaks derived from segment endpoints.
+	It then simply take the set difference and reports it for both horizontal and vertical data.
+	"""
+
+	single_peaks = {}
+	for segments, tag in [(horizontal_segments, HORIZONTAL_TAG), (vertical_segments, VERTICAL_TAG)]:
+		peaks_set = set.union(
+			set(peaks[_tag(tag, HIGH_TYPE)]),
+			set(peaks[_tag(tag, LOW_TYPE)]),
+		)
+		segment_endpoints_set = set([item for sublist in segments for item in sublist])
+		single_peaks[tag] = peaks_set.difference(segment_endpoints_set)
+
+	return single_peaks
+
+
 def compute_segments(peaks_path):
 	peaks = {}
 	with open(peaks_path, "r") as peaks_file:
@@ -64,6 +84,11 @@ def compute_segments(peaks_path):
 			peak_sum = peak_sum + len(peaks[_tag(tag, type)])
 	if peak_sum > (len(horizontal_segments) + len(vertical_segments)) * 2:
 		logger.critical("Single peaks detected!")
+		single_peaks = find_single_peaks(peaks, horizontal_segments, vertical_segments)
+		for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
+			if len(single_peaks[tag]) > 0:
+				logger.critical(f"{tag} single peak frames: {single_peaks[tag]}")
+		exit(1)
 
 	horizontal_intervals = pd.arrays.IntervalArray.from_tuples(horizontal_segments)
 	vertical_intervals = pd.arrays.IntervalArray.from_tuples(vertical_segments)

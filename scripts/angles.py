@@ -39,15 +39,17 @@ def parse_cli():
 	parser = argparse.ArgumentParser(description="Angles (Plots the distribution of angles)")
 	parser.add_argument("--rolling", dest="rolling", type=int, default=10, help="Rolling mean value")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
-	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to CSV data file to read.")
-	parser.add_argument("--peaks-file", dest="peaks_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to YAML peaks file.")
+	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=False, help="path to CSV data file to read.")
+	parser.add_argument("--peaks-file", dest="peaks_file", type=lambda x: is_valid_file(parser, x), required=False, help="path to YAML peaks file.")
+	parser.add_argument("--angles-file", dest="angles_file", type=lambda x: is_valid_file(parser, x), required=False, help="path to CSV Angles file.")
+
 
 	args = parser.parse_args()
 
 	# enable colored logs
 	coloredlogs.install(level=logging.DEBUG if args.verbose else logging.INFO, logger=logger)
 
-	return args.data_file, args.peaks_file, args.rolling
+	return args.data_file, args.peaks_file,args.angles_file, args.rolling
 
 
 def compute_segments(peaks_file_path):
@@ -94,26 +96,33 @@ def compute_segments(peaks_file_path):
 
 def main():
 
-	data_file, peaks_file, rolling = parse_cli()
+	data_file, peaks_file, angles_file, rolling = parse_cli()
 
-	frame = pd.read_csv(data_file)
-	segments = compute_segments(peaks_file)
+	if data_file and peaks_file:
+		frame = pd.read_csv(data_file)
+		segments = compute_segments(peaks_file)
+		angles = []
+		for segment in segments:
+			x0 = frame["x0"][segment[0]]
+			y0 = frame["y0"][segment[0]]
+			x1 = frame["x0"][segment[1]]
+			y1 = frame["y0"][segment[1]]
+			angle = np.degrees(np.arctan((x0 - x1) / (y0 - y1)))
+			angles += [angle]
+		df = pd.DataFrame(angles)
+		df.to_csv('auto-2/angle-118l.csv')
 
-	angles = []
-	for segment in segments:
-		x0 = frame["x0"][segment[0]]
-		y0 = frame["y0"][segment[0]]
-		x1 = frame["x0"][segment[1]]
-		y1 = frame["y0"][segment[1]]
-		angle = np.degrees(np.arctan((x0 - x1) / (y0 - y1)))
-		angles += [angle]
-		#df = pd.DataFrame(angles)
-		#df.to_csv('auto-2/angle-l.csv')
+		logger.info(f"Angles computed")
+	else:
+		frame = pd.read_csv(angles_file, header = 0)
+		print(frame)
+		angles = frame.iloc[:,1]
+		print(angles)
+		logger.info(f"Angles received")
 
-	logger.info(f"Angles computed")
 
 	np_angles = np.array(angles)
-	plt.hist(np_angles, bins=40, density=True)
+	plt.hist(np_angles, bins=30, density=True)
 
 	grid = np.linspace(-90, 90, 1000)
 	distribution = sm.nonparametric.KDEMultivariate([np_angles], var_type = 'c', bw = 'normal_reference')

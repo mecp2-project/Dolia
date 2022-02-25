@@ -4,16 +4,14 @@ Looking for Horizontal and Vertical segments
 If Vertical does not have corresponding Horizontal --- taking Vertical
 If corresponding segment exists --- taking Horizontal
 
-Foolproof:
+Foolproof (todo):
 	Plot calculated segments (in case something is missed)
 
 Inputs:
-	1. Clean.csv
+	1. Clean.CSV
 	2. peaks file
-	3. Moving average value (default = 10)
 Output:
 	1. Angles file
-	2. Histogram of angle distribution
 """
 
 import argparse
@@ -23,38 +21,27 @@ import yaml
 import numpy as np
 import pandas as pd
 from utility import HORIZONTAL_TAG, VERTICAL_TAG, HIGH_TYPE, LOW_TYPE, logger, _tag, is_valid_file, peaks_to_segments
-import matplotlib.pyplot as plt
-from matplotlib import colors
-from matplotlib.ticker import PercentFormatter
-import scipy.stats as st
-from scipy.stats import norm
-import statistics
-import statsmodels.api as sm
-import scipy.signal as signal
 
 
 def parse_cli():
 
 	# All input that is needed
-	parser = argparse.ArgumentParser(description="Angles (Plots the distribution of angles)")
-	parser.add_argument("--rolling", dest="rolling", type=int, default=10, help="Rolling mean value")
+	parser = argparse.ArgumentParser(description="Angles -- processes data na peak files for one experiment extracting segment info including angles")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
-	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=False, help="path to CSV data file to read.")
-	parser.add_argument("--peaks-file", dest="peaks_file", type=lambda x: is_valid_file(parser, x), required=False, help="path to YAML peaks file.")
-	parser.add_argument("--angles-file", dest="angles_file", type=lambda x: is_valid_file(parser, x), required=False, help="path to CSV Angles file.")
-
+	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to a CSV data file to read.")
+	parser.add_argument("--peaks-file", dest="peaks_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to a YAML peaks file to read.")
+	parser.add_argument("--angles-file", dest="angles_file", type=str, required=True, help="path to a CSV angles file to write.")
 
 	args = parser.parse_args()
 
 	# enable colored logs
 	coloredlogs.install(level=logging.DEBUG if args.verbose else logging.INFO, logger=logger)
 
-	return args.data_file, args.peaks_file,args.angles_file, args.rolling
+	return Path(args.data_file), Path(args.peaks_file), Path(args.angles_file)
 
 
-def compute_segments(peaks_file_path):
+def compute_segments(peaks_path):
 	peaks = {}
-	peaks_path = Path(peaks_file_path)
 	with open(peaks_path, "r") as peaks_file:
 		try:
 			content = yaml.safe_load(peaks_file)
@@ -96,44 +83,31 @@ def compute_segments(peaks_file_path):
 
 def main():
 
-	data_file, peaks_file, angles_file, rolling = parse_cli()
+	data_file_path, peaks_file_path, angles_file_path = parse_cli()
 
-	if data_file and peaks_file:
-		frame = pd.read_csv(data_file)
-		segments = compute_segments(peaks_file)
-		angles = []
-		for segment in segments:
-			x0 = frame["x0"][segment[0]]
-			y0 = frame["y0"][segment[0]]
-			x1 = frame["x0"][segment[1]]
-			y1 = frame["y0"][segment[1]]
-			angle = np.degrees(np.arctan((x0 - x1) / (y0 - y1)))
-			angles += [angle]
-		df = pd.DataFrame(angles)
-		df.to_csv('auto-2/angle-118l.csv')
+	data_frame = pd.read_csv(data_file_path)
+	segments = compute_segments(peaks_file_path)
+	angles = []
+	for segment in segments:
+		x0 = data_frame["x0"][segment[0]]
+		y0 = data_frame["y0"][segment[0]]
+		x1 = data_frame["x0"][segment[1]]
+		y1 = data_frame["y0"][segment[1]]
+		segment_info = {}
+		segment_info["start"] = segment[0]
+		segment_info["end"] = segment[1]
+		segment_info["length"] = segment[1] - segment[0]
+		segment_info["delta_x"] = x1 - x0
+		segment_info["delta_y"] = y1 - y0
+		segment_info["angle"] = np.degrees(np.arctan((x0 - x1) / (y0 - y1)))
 
-		logger.info(f"Angles computed")
-	else:
-		frame = pd.read_csv(angles_file, header = 0)
-		print(frame)
-		angles = frame.iloc[:,1]
-		print(angles)
-		logger.info(f"Angles received")
+		angles += [segment_info]
 
+	angles_frame = pd.DataFrame(angles)
 
-	np_angles = np.array(angles)
-	plt.hist(np_angles, bins=30, density=True)
+	angles_frame.to_csv(angles_file_path)
 
-	grid = np.linspace(-90, 90, 1000)
-	distribution = sm.nonparametric.KDEMultivariate([np_angles], var_type = 'c', bw = 'normal_reference')
-	pdf = distribution.pdf(grid)
-	peak = signal.find_peaks(pdf, prominence=2)[0]
-	plt.plot(grid, pdf, lw=3)
-	plt.plot(peak,"o", color = 'red')
-	plt.ylabel('Probability')
-	plt.xlabel('Angles')
-	plt.show()
-
+	logger.info(f"Angles computed and written to {angles_file_path}")
 
 if __name__ == "__main__":
 	main()

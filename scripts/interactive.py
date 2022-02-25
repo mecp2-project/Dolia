@@ -11,7 +11,7 @@ from pathlib import Path
 import textwrap
 import yaml
 from peaks import find_peaks
-from utility import HORIZONTAL_TAG, VERTICAL_TAG, HIGH_TYPE, LOW_TYPE, logger, _tag, is_valid_file, peaks_to_segments
+from utility import HORIZONTAL_TAG, VERTICAL_TAG, AREA_TAG, RATIO_TAG, HIGH_TYPE, LOW_TYPE, logger, _tag, is_valid_file, peaks_to_segments
 
 # Constants
 KEY_CLOSE = "q"
@@ -42,6 +42,9 @@ def parse_cli():
 			Example:
 				./interactive.py --data-file ./clean.csv --peaks-file ./peaks.yaml -v
 
+				./interactive.py --data-file ./clean.csv --peaks-file ./peaks.yaml -v --view-area
+				./interactive.py --data-file ./clean.csv --peaks-file ./peaks.yaml -v --view-ratio
+
 			Keys:
 				"{KEY_CLOSE}" : close the window, save all peaks
 				"{KEY_LEFT}"/"{KEY_RIGHT}" : move zoom window left and right
@@ -50,10 +53,16 @@ def parse_cli():
 				LEFT click to add/remove HIGH peak on the currently selected frame (red dot)
 				RIGHT click to add/remove LOW peak on the currently selected frame (red dot)
 				"{KEY_UNDO}" : to add/remove last removed/added peak
+
+			Notes:
+				At most one of --view-area and --view-ratio can be set
+				If --view-* is set, interactive marking of segments is deisabled
 		"""),
 	)
 	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to CSV data file to read")
 	parser.add_argument("--peaks-file", dest="peaks_file", type=str, required=True, help="path to YAML peaks file; if exists, will read, else will create")
+	parser.add_argument("--view-area", dest="view_area", default=False, help="show pupil radius as a third plot; will disable marking functionality, but not zooming and walking;", action="store_true")
+	parser.add_argument("--view-ratio", dest="view_ratio", default=False, help="show pupil radii ratio as a third plot; will disable marking functionality, but not zooming and walking;", action="store_true")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
 
 	args = parser.parse_args()
@@ -61,7 +70,7 @@ def parse_cli():
 	# enable colored logs
 	coloredlogs.install(level=logging.DEBUG if args.verbose else logging.INFO, logger=logger)
 
-	return args.data_file, args.peaks_file
+	return args.data_file, args.peaks_file, args.view_area, args.view_ratio
 
 
 def update_peaks_file(peaks, peaks_file_path):
@@ -146,25 +155,39 @@ def main():
 	# current mouse x-position (need to trigger new red dot only when actual frame changes)
 	current_mouse_x = 0
 
-	data_file, peaks_file = parse_cli()
+	data_file, peaks_file, view_area, view_ratio = parse_cli()
+
+	if view_area and view_ratio:
+		logger.critical("Only one of --view-area and --view-ration can be set")
+		exit(1)
+
+	view_extra = view_area or view_ratio
+	if view_area:
+		EXTRA_TAG = AREA_TAG
+		extra_title = "Pupil Area"
+		extra_y_label = "Square Pixels"
+	if view_ratio:
+		EXTRA_TAG = RATIO_TAG
+		extra_title = "Pupil Radii Ratio"
+		extra_y_label = "Ratio"
 
 	frame = pd.read_csv(data_file)
 
 	# this is important, we need a capable backend that can redraw and do bliting
 	matplotlib.use("Qt5Agg")
 
-	figure, (subplot_horizontal, subplot_vertical) = plt.subplots(2)
+	if view_extra:
+		figure, (subplot_horizontal, subplot_vertical, subplot_extra) = plt.subplots(3)
+	else:
+		figure, (subplot_horizontal, subplot_vertical) = plt.subplots(2)
 
 	# compute moving averages
-	for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
+	for tag in [HORIZONTAL_TAG, VERTICAL_TAG, AREA_TAG, RATIO_TAG]:
 		frame[f"mavg_{MOVING_AVG}_{tag}"] = frame[tag].rolling(MOVING_AVG).mean()
 		frame[f"mavg_{MOVING_AVG}_{tag}_shifted"] = frame[f"mavg_{MOVING_AVG}_{tag}"].shift(-int(MOVING_AVG / 2))
 
 	# get all peaks
 	peaks = read_or_compute_peaks(frame, peaks_file)
-
-	subplot_vertical.set_xlabel("Frames")
-	figure.text(0.06, 0.5, "Pixels", ha="center", va="center", rotation="vertical")
 
 	def redraw():
 		"""
@@ -178,7 +201,11 @@ def main():
 		nonlocal background
 		nonlocal active_peak_plots
 
-		for tag, subplot, title in [[HORIZONTAL_TAG, subplot_horizontal, "Horizontal"], [VERTICAL_TAG, subplot_vertical, "Vertical"]]:
+		subplots = [(HORIZONTAL_TAG, subplot_horizontal, "Horizontal", "Pixels"), (VERTICAL_TAG, subplot_vertical, "Vertical", "Pixels")]
+		if view_extra:
+			subplots += [(EXTRA_TAG, subplot_extra, extra_title, extra_y_label)]
+
+		for tag, subplot, title, y_label in subplots:
 			subplot.cla()
 
 			# compute margins for frames to plot
@@ -188,6 +215,21 @@ def main():
 			# plot original data and moving average series
 			subplot.plot(frame[tag][left_endpoint:right_endpoint], linewidth=0.5, label="Original Sanitized Data", color="darkslategray")
 			subplot.plot(frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][left_endpoint:right_endpoint], label=f"{MOVING_AVG} moving average half-shifted", color="teal")
+
+			# set viewframe
+			subplot.set_xlim(current_left_window_endpoint, current_left_window_endpoint + window)
+			subplot.set_ylim(
+				frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][current_left_window_endpoint:current_left_window_endpoint + window].min() * 0.9,
+				frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][current_left_window_endpoint:current_left_window_endpoint + window].max() * 1.1,
+			)
+
+			subplot.set_title(title)
+			subplot.set_ylabel(y_label)
+			subplot.legend()
+
+			# shortcut for non vertical and horizontal tags; no need segments for this type;
+			if tag not in [HORIZONTAL_TAG, VERTICAL_TAG]:
+				continue
 
 			# filter only the peak in the current range
 			peaks_in_range = {}
@@ -211,13 +253,6 @@ def main():
 
 			# create empty plot for current frame (to be red dot)
 			(active_peak_plots[tag], ) = subplot.plot([], [], marker="o", color="red", alpha=0.75, animated=True, markersize=10)
-
-			# set viewframe
-			subplot.set_xlim(current_left_window_endpoint, current_left_window_endpoint + window)
-			subplot.set_ylim(frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][current_left_window_endpoint:current_left_window_endpoint + window].min() * 0.9, frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][current_left_window_endpoint:current_left_window_endpoint + window].max() * 1.1)
-
-			subplot.set_title(f"{title} Movements")
-			subplot.legend()
 
 		# draw and save rendered UI into variable
 		figure.canvas.draw()
@@ -374,11 +409,12 @@ def main():
 			redraw()
 
 	# register event listeners
-	figure.canvas.mpl_connect("motion_notify_event", motion_notify_handler)
 	figure.canvas.mpl_connect("key_press_event", key_press_handler)
-	figure.canvas.mpl_connect("key_release_event", key_release_handler)
-	figure.canvas.mpl_connect("button_press_event", on_click_handler)
 	figure.canvas.mpl_connect("resize_event", lambda event: redraw())
+	if not view_extra:
+		figure.canvas.mpl_connect("motion_notify_event", motion_notify_handler)
+		figure.canvas.mpl_connect("key_release_event", key_release_handler)
+		figure.canvas.mpl_connect("button_press_event", on_click_handler)
 
 	redraw()
 

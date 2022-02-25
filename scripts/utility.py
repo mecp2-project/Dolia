@@ -3,6 +3,8 @@ import os
 
 HORIZONTAL_TAG = "x0"
 VERTICAL_TAG = "y0"
+AREA_TAG = "ellipse_area"
+RATIO_TAG = "radius_ratio"
 HIGH_TYPE = "high"
 LOW_TYPE = "low"
 

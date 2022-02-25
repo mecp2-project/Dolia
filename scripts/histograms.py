@@ -34,9 +34,9 @@ def main():
 	angles_file_path, secondary_file_path, bins, svg = parse_cli()
 
 	grid = np.linspace(-90, 90, 1000)
-	bar_colors = ["forestgreen", "firebrick"]
-	line_colors = ["limegreen", "orangered"]
-	tick_colors = ["lime", "red"]
+	bar_colors = ["steelblue", "lightcoral"]
+	line_colors = ["mediumblue", "orangered"]
+	tick_colors = ["mediumblue", "red"]
 
 	if svg:
 		plt.figure(figsize=[10, 6])
@@ -56,8 +56,8 @@ def main():
 			pdf = kde_distribution.pdf(grid)
 			peaks = signal.find_peaks(pdf)[0]
 
-			plt.plot(grid, pdf, lw=3, color=line_colors[0 if primary else 1], label=f"{'Non-MECP2' if primary else 'MECP2'} KDE with normal reference bandwidth")
-			plt.plot(grid[peaks], pdf[peaks], "o", color="orange")
+			plt.plot(grid, pdf, lw=3, color=line_colors[0 if primary else 1], label=f"{'WT' if primary else 'MECP2'} KDE with normal reference bandwidth")
+			#plt.plot(grid[peaks], pdf[peaks], "o", color="orange")
 
 			plt.plot(angles, [0 for i in range(len(angles))], "|", color=tick_colors[0 if primary else 1])
 
@@ -67,14 +67,14 @@ def main():
 		density=True,
 		color=bar_colors if secondary_file_path else bar_colors[0],
 		label=[
-			"Non-MECP2 angle probability distribution",
+			"WT angle probability distribution",
 			"MECP2 angle probability distribution",
 		],
 	)
 
 	plt.ylabel("Probability")
 	plt.xlabel("Angle (degrees)")
-	plt.title("Non-MECP2 vs MECP2 by angle distribution")
+	plt.title("WT vs MECP2 by angle distribution")
 	plt.legend()
 
 	if svg:

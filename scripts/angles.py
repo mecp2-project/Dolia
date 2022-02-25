@@ -40,7 +40,7 @@ def parse_cli():
 	return Path(args.data_file), Path(args.peaks_file), Path(args.angles_file)
 
 
-def find_any_single_peak(peaks, horizontal_segments, vertical_segments):
+def find_single_peaks(peaks, horizontal_segments, vertical_segments):
 	"""
 	Returns the frame numbers of all detected single peaks split into horizontal and vertical.
 
@@ -84,7 +84,7 @@ def compute_segments(peaks_path):
 			peak_sum = peak_sum + len(peaks[_tag(tag, type)])
 	if peak_sum > (len(horizontal_segments) + len(vertical_segments)) * 2:
 		logger.critical("Single peaks detected!")
-		single_peaks = find_any_single_peak(peaks, horizontal_segments, vertical_segments)
+		single_peaks = find_single_peaks(peaks, horizontal_segments, vertical_segments)
 		for tag in [HORIZONTAL_TAG, VERTICAL_TAG]:
 			if len(single_peaks[tag]) > 0:
 				logger.critical(f"{tag} single peak frames: {single_peaks[tag]}")

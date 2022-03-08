@@ -16,7 +16,7 @@ def parse_cli():
 	# All input that is needed
 	parser = argparse.ArgumentParser(description="Histograms -- plot a single or double histogram")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
-	parser.add_argument("--bins", dest="bins", type=int, default=30, help="The number of bins for the histogram.")
+	parser.add_argument("--bins", dest="bins", type=int, default=20, help="The number of bins for the histogram.")
 	parser.add_argument("--angles-file", dest="angles_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to a CSV angles file to read.")
 	parser.add_argument("--secondary-file", dest="secondary_file", type=lambda x: is_valid_file(parser, x), required=False, help="path to a secondary CSV angles file to read (if supplied, will plot double histogram).")
 	parser.add_argument("--svg", dest="svg", default=False, help="save to SVG (double-histogram.svg in your current directory) instead of showing in a wondow", action="store_true")

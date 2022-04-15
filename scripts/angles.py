@@ -124,7 +124,7 @@ def main():
 		segment_info["length"] = segment[1] - segment[0]
 		segment_info["delta_x"] = x1 - x0
 		segment_info["delta_y"] = y1 - y0
-		segment_info["angle"] = np.degrees(np.arctan((x0 - x1) / (y0 - y1)))
+		segment_info["angle"] = np.degrees(np.arctan((y1 - y0) / (x1 - x0)))
 
 		angles += [segment_info]
 

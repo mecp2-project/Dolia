@@ -30,6 +30,9 @@ MOVING_AVG = 10
 # initial view window size in frames
 INITIAL_WINDOW = 1000
 
+# the min difference for two successive segments to count the switch
+SWITCH_CUTOFF = 30
+
 
 def parse_cli():
 	"""Parse command line arguments and return them as values"""
@@ -60,6 +63,7 @@ def parse_cli():
 	)
 	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to CSV data file to read")
 	parser.add_argument("--peaks-file", dest="peaks_file", type=str, required=True, help="path to YAML peaks file; if exists, will read, else will create")
+	parser.add_argument("--angles-file", dest="angles_file", type=str, required=False, help="path to CSV angles file; to plot switches")
 	parser.add_argument("--view-area", dest="view_area", default=False, help="show pupil radius as a third plot; will disable marking functionality, but not zooming and walking;", action="store_true")
 	parser.add_argument("--view-ratio", dest="view_ratio", default=False, help="show pupil radii ratio as a third plot; will disable marking functionality, but not zooming and walking;", action="store_true")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
@@ -69,7 +73,22 @@ def parse_cli():
 	# enable colored logs
 	coloredlogs.install(level=logging.DEBUG if args.verbose else logging.INFO, logger=logger)
 
-	return args.data_file, args.peaks_file, args.view_area, args.view_ratio
+	return args.data_file, args.peaks_file, args.angles_file, args.view_area, args.view_ratio
+
+
+def compute_switches(angles_file):
+
+	switches = []
+
+	if angles_file is not None:
+		angles_path = Path(angles_file)
+		data_frame = pd.read_csv(angles_path)
+		for i in range(len(data_frame) - 1):
+			if abs(float(data_frame.loc[i, "angle"]) - float(data_frame.loc[i + 1, "angle"])) > SWITCH_CUTOFF:
+				switches += [int(data_frame.loc[i, "end"])]
+		return switches
+	else:
+		return []
 
 
 def update_peaks_file(peaks, peaks_file_path):
@@ -154,7 +173,9 @@ def main():
 	# current mouse x-position (need to trigger new red dot only when actual frame changes)
 	current_mouse_x = 0
 
-	data_file, peaks_file, view_area, view_ratio = parse_cli()
+	data_file, peaks_file, angles_file, view_area, view_ratio = parse_cli()
+
+	switches = compute_switches(angles_file)
 
 	if view_area and view_ratio:
 		logger.critical("Only one of --view-area and --view-ration can be set")
@@ -225,6 +246,10 @@ def main():
 			subplot.set_title(title)
 			subplot.set_ylabel(y_label)
 			subplot.legend()
+
+			for switch in switches:
+				if switch > left_endpoint and switch < right_endpoint:
+					subplot.axvline(x=switch, color="red", linewidth=2)
 
 			# shortcut for non vertical and horizontal tags; no need segments for this type;
 			if tag not in [HORIZONTAL_TAG, VERTICAL_TAG]:

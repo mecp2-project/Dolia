@@ -9,6 +9,7 @@ from utility import logger, is_valid_file
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import scipy.signal as signal
+import statistics
 
 
 def parse_cli():
@@ -17,21 +18,22 @@ def parse_cli():
 	parser = argparse.ArgumentParser(description="Histograms -- plot a single or double histogram")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
 	parser.add_argument("--bins", dest="bins", type=int, default=20, help="The number of bins for the histogram.")
+	parser.add_argument("--highest_peak", dest="highest_peak", type=float, default=None, help="Highest peak of the set. If supplied, program will compute switches using standard deviation.")
 	parser.add_argument("--angles-file", dest="angles_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to a CSV angles file to read.")
 	parser.add_argument("--secondary-file", dest="secondary_file", type=lambda x: is_valid_file(parser, x), required=False, help="path to a secondary CSV angles file to read (if supplied, will plot double histogram).")
-	parser.add_argument("--svg", dest="svg", default=False, help="save to SVG (double-histogram.svg in your current directory) instead of showing in a wondow", action="store_true")
+	parser.add_argument("--svg", dest="svg", default=False, help="save to SVG (double-histogram.svg in your current directory) instead of showing in a window", action="store_true")
 
 	args = parser.parse_args()
 
 	# enable colored logs
 	coloredlogs.install(level=logging.DEBUG if args.verbose else logging.INFO, logger=logger)
 
-	return Path(args.angles_file), Path(args.secondary_file) if args.secondary_file else None, args.bins, args.svg
+	return Path(args.angles_file), Path(args.secondary_file) if args.secondary_file else None, args.bins, args.svg, args.highest_peak
 
 
 def main():
 
-	angles_file_path, secondary_file_path, bins, svg = parse_cli()
+	angles_file_path, secondary_file_path, bins, svg, highest_peak = parse_cli()
 
 	grid = np.linspace(-90, 90, 1000)
 	bar_colors = ["steelblue", "lightcoral"]
@@ -40,6 +42,11 @@ def main():
 
 	if svg:
 		plt.figure(figsize=[10, 6])
+
+	# if secondary file supplied and highest peak supplied, then error
+	if secondary_file_path is not None and highest_peak is not None:
+		logger.critical("Secondary File and Highest peak were supplied. Choose one of them.")
+		exit(1)
 
 	angles_list = []
 	for file_path, primary in [(angles_file_path, True), (secondary_file_path, False)]:
@@ -71,6 +78,20 @@ def main():
 			"MECP2 angle probability distribution",
 		],
 	)
+
+	if highest_peak is not None:
+		angle_std = statistics.pstdev(angles_list[0])
+		plus_std = highest_peak + 2*angle_std
+		minus_std = highest_peak - 2*angle_std
+
+		plt.axvline(x=highest_peak, color="green", linewidth=2)
+		plt.axvline(x=plus_std, color="red", linewidth=2)
+		plt.axvline(x=minus_std, color="red", linewidth=2)
+
+		logger.info(f"Standard Deviation is {angle_std:.2f}")
+		logger.info(f"Highest Peak + 2 Standard Deviation is {plus_std:.2f}")
+		logger.info(f"Highest Peak - 2 Standard Deviation is {minus_std:.2f}")
+
 
 	plt.ylabel("Probability")
 	plt.xlabel("Angle (degrees)")

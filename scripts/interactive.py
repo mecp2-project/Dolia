@@ -30,8 +30,6 @@ MOVING_AVG = 10
 # initial view window size in frames
 INITIAL_WINDOW = 1000
 
-# the min difference for two successive segments to count the switch
-SWITCH_CUTOFF = 30
 
 
 def parse_cli():
@@ -63,7 +61,8 @@ def parse_cli():
 	)
 	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to CSV data file to read")
 	parser.add_argument("--peaks-file", dest="peaks_file", type=str, required=True, help="path to YAML peaks file; if exists, will read, else will create")
-	parser.add_argument("--angles-file", dest="angles_file", type=str, required=False, help="path to CSV angles file; to plot switches")
+	parser.add_argument("--plus-std", dest="plus_std", type=float, default=None, help="Highest peak plus 2 standard deviations")
+	parser.add_argument("--minus-std", dest="minus_std", type=float, default=None, help="Highest peak minus 2 standard deviations")
 	parser.add_argument("--view-area", dest="view_area", default=False, help="show pupil radius as a third plot; will disable marking functionality, but not zooming and walking;", action="store_true")
 	parser.add_argument("--view-ratio", dest="view_ratio", default=False, help="show pupil radii ratio as a third plot; will disable marking functionality, but not zooming and walking;", action="store_true")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
@@ -73,22 +72,7 @@ def parse_cli():
 	# enable colored logs
 	coloredlogs.install(level=logging.DEBUG if args.verbose else logging.INFO, logger=logger)
 
-	return args.data_file, args.peaks_file, args.angles_file, args.view_area, args.view_ratio
-
-
-def compute_switches(angles_file):
-
-	switches = []
-
-	if angles_file is not None:
-		angles_path = Path(angles_file)
-		data_frame = pd.read_csv(angles_path)
-		for i in range(len(data_frame) - 1):
-			if abs(float(data_frame.loc[i, "angle"]) - float(data_frame.loc[i + 1, "angle"])) > SWITCH_CUTOFF:
-				switches += [int(data_frame.loc[i, "end"])]
-		return switches
-	else:
-		return []
+	return args.data_file, args.peaks_file, args.view_area, args.view_ratio, args.plus_std, args.minus_std
 
 
 def update_peaks_file(peaks, peaks_file_path):
@@ -143,6 +127,13 @@ def read_or_compute_peaks(frame, peaks_file_path):
 
 	return peaks
 
+def compute_angle_from_segment(start, end, frame):
+	x0 = frame["x0"][start]
+	y0 = frame["y0"][start]
+	x1 = frame["x0"][end]
+	y1 = frame["y0"][end]
+
+	return np.degrees(np.arctan((y1 - y0) / (x1 - x0)))
 
 def main():
 	"""
@@ -173,9 +164,11 @@ def main():
 	# current mouse x-position (need to trigger new red dot only when actual frame changes)
 	current_mouse_x = 0
 
-	data_file, peaks_file, angles_file, view_area, view_ratio = parse_cli()
+	data_file, peaks_file, view_area, view_ratio, plus_std, minus_std = parse_cli()
 
-	switches = compute_switches(angles_file)
+	if (plus_std is None and minus_std is not None) or (plus_std is not None and minus_std is None):
+		logger.critical("Error. Check if Plus STD and Minus STD are given.")
+		exit(1)
 
 	if view_area and view_ratio:
 		logger.critical("Only one of --view-area and --view-ration can be set")
@@ -243,13 +236,10 @@ def main():
 				frame[f"mavg_{MOVING_AVG}_{tag}_shifted"][current_left_window_endpoint:current_left_window_endpoint + window].max() * 1.1,
 			)
 
+
 			subplot.set_title(title)
 			subplot.set_ylabel(y_label)
 			subplot.legend()
-
-			for switch in switches:
-				if switch > left_endpoint and switch < right_endpoint:
-					subplot.axvline(x=switch, color="red", linewidth=2)
 
 			# shortcut for non vertical and horizontal tags; no need segments for this type;
 			if tag not in [HORIZONTAL_TAG, VERTICAL_TAG]:
@@ -263,7 +253,14 @@ def main():
 			# compute segments for current window and plot them
 			segments = peaks_to_segments(peaks_in_range[HIGH_TYPE].tolist(), peaks_in_range[LOW_TYPE].tolist())
 			for start, end in segments:
-				subplot.axvspan(start, end, color='green', alpha=0.3)
+				segment_color = "green"
+				if plus_std is not None:
+					angle = compute_angle_from_segment(start, end, frame)
+					if angle < minus_std:
+						segment_color = "blue"
+					elif angle > plus_std:
+						segment_color = "red"
+				subplot.axvspan(start, end, color=segment_color, alpha=0.3)
 
 			# plot current peaks, high and low; plot peaks that are a part of a segment differently
 			for type, color in [[HIGH_TYPE, "orange"], [LOW_TYPE, "blue"]]:

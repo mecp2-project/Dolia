@@ -56,7 +56,7 @@ def parse_cli():
 
 			Notes:
 				At most one of --view-area and --view-ratio can be set
-				If --view-* is set, interactive marking of segments is deisabled
+				If --view-* is set, interactive marking of segments is disabled
 		"""),
 	)
 	parser.add_argument("--data-file", dest="data_file", type=lambda x: is_valid_file(parser, x), required=True, help="path to CSV data file to read")
@@ -133,7 +133,11 @@ def compute_angle_from_segment(start, end, frame):
 	x1 = frame["x0"][end]
 	y1 = frame["y0"][end]
 
-	return np.degrees(np.arctan((y1 - y0) / (x1 - x0)))
+	angle = np.degrees(np.arctan((y1 - y0) / (x1 - x0)))
+
+	logger.info(f"Segment [{start}, {end}]: angle = {angle}, {x0}, {x1}, {y0}, {y1}")
+
+	return angle
 
 def main():
 	"""

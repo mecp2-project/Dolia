@@ -135,7 +135,6 @@ def compute_angle_from_segment(start, end, frame):
 
 	angle = np.degrees(np.arctan((y1 - y0) / (x1 - x0)))
 
-	logger.info(f"Segment [{start}, {end}]: angle = {angle}, {x0}, {x1}, {y0}, {y1}")
 
 	return angle
 

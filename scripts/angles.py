@@ -126,14 +126,18 @@ def main():
 		segment_info["delta_y"] = y1 - y0
 		segment_info["angle"] = np.degrees(np.arctan((y1 - y0) / (x1 - x0)))
 
-
 		angles += [segment_info]
+
+	for i in range(len(angles) - 1):
+		interval = angles[i + 1]["start"] - angles[i]["end"]
+		angles[i]["interval"] = interval
 
 	angles_frame = pd.DataFrame(angles)
 
 	angles_frame.to_csv(angles_file_path)
 
 	logger.info(f"Angles computed and written to {angles_file_path}")
+
 
 if __name__ == "__main__":
 	main()

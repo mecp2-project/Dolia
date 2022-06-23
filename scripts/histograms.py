@@ -36,9 +36,9 @@ def main():
 	angles_file_path, secondary_file_path, bins, svg, highest_peak = parse_cli()
 
 	grid = np.linspace(-90, 90, 1000)
-	bar_colors = ["steelblue", "lightcoral"]
-	line_colors = ["mediumblue", "orangered"]
-	tick_colors = ["mediumblue", "red"]
+	bar_colors = ["steelblue", "palevioletred"]
+	line_colors = ["mediumblue", "mediumvioletred"]
+	tick_colors = ["mediumblue", "mediumvioletred"]
 
 	if svg:
 		plt.figure(figsize=[10, 6])
@@ -81,16 +81,16 @@ def main():
 
 	if highest_peak is not None:
 		angle_std = statistics.pstdev(angles_list[0])
-		plus_std = highest_peak + 2*angle_std
-		minus_std = highest_peak - 2*angle_std
+		plus_std = highest_peak + angle_std
+		minus_std = highest_peak - angle_std
 
 		plt.axvline(x=highest_peak, color="green", linewidth=2)
 		plt.axvline(x=plus_std, color="red", linewidth=2)
 		plt.axvline(x=minus_std, color="red", linewidth=2)
 
 		logger.info(f"Standard Deviation is {angle_std:.2f}")
-		logger.info(f"Highest Peak + 2 Standard Deviation is {plus_std:.2f}")
-		logger.info(f"Highest Peak - 2 Standard Deviation is {minus_std:.2f}")
+		logger.info(f"Highest Peak + Standard Deviation is {plus_std:.2f}")
+		logger.info(f"Highest Peak - Standard Deviation is {minus_std:.2f}")
 
 
 	plt.ylabel("Probability")

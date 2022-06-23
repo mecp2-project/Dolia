@@ -10,6 +10,7 @@
         "iterrows",
         "MECP",
         "nrows",
+        "palevioletred",
         "pyplot",
         "quantile",
         "rlong",

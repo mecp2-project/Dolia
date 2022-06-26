@@ -32,10 +32,10 @@ def compute_epochs(angles_frame, plus_std, minus_std, get_category):
 	epochs = []
 	for _, row in angles_frame.iterrows():
 		category = get_category(row["angle"], plus_std, minus_std)
-		if current_category == category:
+		if current_category == category and row["interval"] < 300:
 			current_epoch_length += int(row["length"])
 		else:
-			if current_category != "":
+			if current_category != "" or row["interval"] > 300:
 				epochs += [[current_category, current_epoch_length]]
 			current_epoch_length = int(row["length"])
 			current_category = category

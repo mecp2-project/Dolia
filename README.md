@@ -17,5 +17,5 @@ To install Python packages, use `requirements.txt`
 To install Qt Python driver on Mac
 
 ```bash
-brew install pyqt
+brew install pyqt@5
 ```

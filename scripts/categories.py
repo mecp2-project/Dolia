@@ -7,6 +7,7 @@ import pandas as pd
 from utility import logger, is_valid_file
 import matplotlib.pyplot as plt
 
+MAX_INTERVAL = 300
 
 def parse_cli():
 
@@ -32,13 +33,16 @@ def compute_epochs(angles_frame, plus_std, minus_std, get_category):
 	epochs = []
 	for _, row in angles_frame.iterrows():
 		category = get_category(row["angle"], plus_std, minus_std)
-		if current_category == category and row["interval"] < 300:
+		if current_category == category and row["interval"] < MAX_INTERVAL:
 			current_epoch_length += int(row["length"])
 		else:
-			if current_category != "" or row["interval"] > 300:
+			if current_category != "":
 				epochs += [[current_category, current_epoch_length]]
+			if row["interval"] >= MAX_INTERVAL:
+				epochs += [["PAUSE", 0]]
 			current_epoch_length = int(row["length"])
 			current_category = category
+
 	epochs += [[current_category, current_epoch_length]]
 	return epochs
 
@@ -46,24 +50,22 @@ def compute_epochs(angles_frame, plus_std, minus_std, get_category):
 def split_components(angle, plus_std, minus_std):
 	if angle > plus_std:
 		return "C2"
-	elif angle < minus_std:
-		return "C1"
-	else:
-		return "P "
+	if angle < minus_std:
+		return "C1"	
+	return "P "
 
 
 def merge_components(angle, plus_std, minus_std):
 	if angle > plus_std or angle < minus_std:
 		return "C"
-	else:
-		return "P"
+	return "P"
 
 
 def main():
 
 	angles_file, bins, plus_std, minus_std = parse_cli()
 
-	angles_frame = pd.read_csv(angles_file, usecols=["length", "angle"])
+	angles_frame = pd.read_csv(angles_file, usecols=["length", "angle", "interval"])
 
 	split_epochs = compute_epochs(
 		angles_frame,
@@ -75,7 +77,7 @@ def main():
 	for category, length in split_epochs:
 		logger.info(f"{category}: {length}")
 
-	logger.info("NEXT")
+	logger.info("-------------------------")
 
 	merge_epochs = compute_epochs(
 		angles_frame,

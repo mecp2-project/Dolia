@@ -128,8 +128,9 @@ def main():
 
 		angles += [segment_info]
 
-	for i in range(len(angles) - 1):
-		interval = angles[i + 1]["start"] - angles[i]["end"]
+	angles[0]["interval"] = angles[0]["start"]
+	for i in range(1, len(angles)):
+		interval = angles[i]["start"] - angles[i - 1]["end"]
 		angles[i]["interval"] = interval
 
 	angles_frame = pd.DataFrame(angles)

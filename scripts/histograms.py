@@ -9,7 +9,7 @@ from utility import logger, is_valid_file
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import scipy.signal as signal
-import statistics
+from scipy.signal import find_peaks
 
 
 def parse_cli():
@@ -58,16 +58,20 @@ def main():
 			angles = np.array(angles_frame["angle"])
 			angles_list += [angles]
 
-			kde_distribution = sm.nonparametric.KDEMultivariate([angles], var_type="c", bw="normal_reference")
+			kde_distribution = sm.nonparametric.KDEMultivariate([angles], var_type="c", bw="cv_ls")
 
 			pdf = kde_distribution.pdf(grid)
 			peaks = signal.find_peaks(pdf)[0]
 
 			plt.plot(grid, pdf, lw=3, color=line_colors[0 if primary else 1], label=f"{'WT' if primary else 'MECP2'} KDE with normal reference bandwidth")
-			#plt.plot(grid[peaks], pdf[peaks], "o", color="orange")
-
+			plt.plot(grid[peaks], pdf[peaks], "o", color="orange", label= "highest peak")
+			mins, _ =find_peaks(pdf*-1)
+			plt.plot(grid[mins], pdf[mins], 'o', color="red")
+			plt.axvline(angles.mean(), color='orange', linestyle='dashed', linewidth=1, label= "mean")
+			plt.axvline(np.median(angles), color='green', linestyle='dashed', linewidth=2, label= "median")
 			plt.plot(angles, [0 for i in range(len(angles))], "|", color=tick_colors[0 if primary else 1])
-
+			logger.info(f"Median is {np.median(angles):.2f}")
+			logger.info(f"Mean is {angles.mean():.2f}")
 	plt.hist(
 		angles_list,
 		bins=bins,

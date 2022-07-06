@@ -58,7 +58,7 @@ def main():
 			angles = np.array(angles_frame["angle"])
 			angles_list += [angles]
 
-			kde_distribution = sm.nonparametric.KDEMultivariate([angles], var_type="c", bw="cv_ls")
+			kde_distribution = sm.nonparametric.KDEMultivariate([angles], var_type="c", bw="normal_reference")
 
 			pdf = kde_distribution.pdf(grid)
 			peaks = signal.find_peaks(pdf)[0]
@@ -97,7 +97,7 @@ def main():
 		logger.info(f"Highest Peak - Standard Deviation is {minus_std:.2f}")
 
 
-	plt.ylabel("Probability")
+	plt.ylabel("Density")
 	plt.xlabel("Angle (degrees)")
 	plt.title("WT vs MECP2 by angle distribution")
 	plt.legend()

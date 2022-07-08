@@ -4,9 +4,6 @@ Looking for Horizontal and Vertical segments
 If Vertical does not have corresponding Horizontal --- taking Vertical
 If corresponding segment exists --- taking Horizontal
 
-Foolproof (todo):
-	Plot calculated segments (in case something is missed)
-
 Inputs:
 	1. Clean.CSV
 	2. peaks file

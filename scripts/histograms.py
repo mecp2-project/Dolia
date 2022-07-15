@@ -64,11 +64,11 @@ def main():
 			peaks = signal.find_peaks(pdf)[0]
 
 			plt.plot(grid, pdf, lw=3, color=line_colors[0 if primary else 1], label=f"{'WT' if primary else 'MECP2'} KDE with normal reference bandwidth")
-			plt.plot(grid[peaks], pdf[peaks], "o", color="orange", label= "highest peak")
+			plt.plot(grid[peaks], pdf[peaks], "o", color="orange", label= "local maxima")
 			mins, _ =find_peaks(pdf*-1)
-			plt.plot(grid[mins], pdf[mins], 'o', color="red")
-			plt.axvline(angles.mean(), color='orange', linestyle='dashed', linewidth=1, label= "mean")
-			plt.axvline(np.median(angles), color='green', linestyle='dashed', linewidth=2, label= "median")
+			plt.plot(grid[mins], pdf[mins], "o", color="red", label = "local minima")
+			plt.axvline(angles.mean(), color="orange", linestyle="dashed", linewidth=2, label= "mean")
+			plt.axvline(np.median(angles), color="green", linestyle="dashed", linewidth=1, label= "median")
 			plt.plot(angles, [0 for i in range(len(angles))], "|", color=tick_colors[0 if primary else 1])
 			logger.info(f"Median is {np.median(angles):.2f}")
 			logger.info(f"Mean is {angles.mean():.2f}")

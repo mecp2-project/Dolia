@@ -101,7 +101,7 @@ def main():
 		logger.info(f"{category}: {length}")
 
 	
-	category_frame = pd.DataFrame(split_epochs)
+	category_frame = pd.DataFrame(merge_epochs)
 	category_frame.to_csv(category_file)
 
 	logger.info(category_frame)

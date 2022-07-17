@@ -22,7 +22,6 @@ def parse_cli():
 	# All input that is needed
 	parser = argparse.ArgumentParser(description="Histograms -- plot a single or double histogram")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
-	parser.add_argument("--bins", dest="bins", type=int, default=20, help="The number of bins for the histogram.")
 	parser.add_argument("--category-file", dest="category_file", type=str, required=True, help="path to a CSV categories file")
 	
 	
@@ -32,11 +31,11 @@ def parse_cli():
 	# enable colored logs
 	coloredlogs.install(level=logging.DEBUG if args.verbose else logging.INFO, logger=logger)
 
-	return  Path(args.category_file), args.bins, 
+	return  Path(args.category_file)
 
 def main():
 
-    category_file, bins  = parse_cli()
+    category_file = parse_cli()
     categories_frame = pd.read_csv(category_file, usecols=["0", "1"])
 
     p_duration = 0

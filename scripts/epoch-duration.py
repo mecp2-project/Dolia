@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
 """
-The script takes Angles file and based on the Angle and the brackets determines which category (Component (C) or Pattern (P)) it belongs to.
-If the distance between two eye movements is greater that 300 frames (Defined as MAX_INTERVAL, can be changed if needed), this period will be considered a break (B).
-
-Merge Epochs:
-			 Component 1 and Cmponent 2 will be considered the same epoch ===> Component (C).
-Split Epochs:
-			Component 1 (Value smaller than MEAN - STD) will be marked as C1
-			Component 2 (Value Greater than MEAN + STD) will be marked as C2							 
-
+The script takes Category File and computes the duration of each epoch (Patten(P), Component (C) or Break (B))
+							 
 Inputs:
 	1. Category file
 Output:
-	1. CSV File that contains Categories and Lengthes of these categories
+	1. Duration of P, C and B
+    2. Percentile of P, C and B
 """
 
 import argparse
@@ -57,9 +51,13 @@ def main():
         else:
             b_duration += row["1"]        
 	
-    logger.info(f"Pattern Duration is: {p_duration}")
-    logger.info(f"Component Duration is: {c_duration}")
-    logger.info(f"Brake Duration is: {b_duration}")
+    logger.info(f"Pattern Duration is: {int(p_duration)}")
+    logger.info(f"Component Duration is: {int(c_duration)}")
+    logger.info(f"Brake Duration is: {int(b_duration)}")
+
+    logger.info(f"Pattern Percentile is: {int(p_duration) /2700:.2f}%")
+    logger.info(f"Component Percentile is: {int(c_duration) /2700:.2f}%")
+    logger.info(f"Brake Percentile is: {int(b_duration) /2700:.2f}%")
 
 if __name__ == "__main__":
 	main()

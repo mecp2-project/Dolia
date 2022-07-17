@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """
-Looking for Horizontal and Vertical segments
-If Vertical does not have corresponding Horizontal --- taking Vertical
-If corresponding segment exists --- taking Horizontal
+The script takes Angles file and based on the Angle and the brackets determines which category (Component (C) or Pattern (P)) it belongs to.
+If the distance between two eye movements is greater that 300 frames (Defined as MAX_INTERVAL, can be changed if needed), this period will be considered a break (B).
 
+Merge Epochs:
+			 Component 1 and Cmponent 2 will be considered the same epoch ===> Component (C).
+Split Epochs:
+			Component 1 (Value smaller than MEAN - STD) will be marked as C1
+			Component 2 (Value Greater than MEAN + STD) will be marked as C2							 
 
 Inputs:
-	1. Clean.CSV
-	2. peaks file
-Output:
 	1. Angles file
+	2. Plus/ Minust Std
+	3. Name of Category file
+Output:
+	1. CSV File that contains Categories and Lengthes of these categories
 """
 
 import argparse
@@ -106,7 +111,8 @@ def main():
 
 	logger.info(category_frame)
 	logger.info(f"Categories computed and written to {category_file}")
-	
+	logger.info(f" Number of Switches including Breaks {category_frame.shape[0]- 1}")
+
 
 	#plt.hist(
 	#	list(map(lambda x: x[1], split_epochs)),

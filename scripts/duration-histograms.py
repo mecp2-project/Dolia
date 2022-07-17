@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+"""
+Plotting the histogram of the duration of pursuits
+
+Inputs:
+	1. Angles File
+Output:
+	1. Histogram with duration distribution
+"""
 
 import argparse
 import coloredlogs, logging

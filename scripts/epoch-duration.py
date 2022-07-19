@@ -6,7 +6,7 @@ Inputs:
 	1. Category file
 Output:
 	1. Duration of P, C and B
-    2. Percentile of P, C and B
+	2. Percentile of P, C and B
 """
 
 import argparse
@@ -35,28 +35,33 @@ def parse_cli():
 
 def main():
 
-    category_file = parse_cli()
-    categories_frame = pd.read_csv(category_file, usecols=["0", "1"])
+	category_file = parse_cli()
+	categories_frame = pd.read_csv(category_file, usecols=["0", "1"])
 
-    p_duration = 0
-    c_duration = 0
-    b_duration = 0
+	p_duration = 0
+	c_duration = 0
+	b_duration = 0
+	duration = 0
 
-    for _, row in categories_frame.iterrows():
-        if row["0"] == "P":
-            p_duration += row["1"]
-        elif row ["0"] == "C":
-             c_duration += row["1"] 
-        else:
-            b_duration += row["1"]        
+	for _, row in categories_frame.iterrows():
+		duration += row["1"]
+		if row["0"] == "P":
+			p_duration += row["1"]
+		elif row ["0"] == "C":
+			c_duration += row["1"]
+		else:
+			b_duration += row["1"]
 	
-    logger.info(f"Pattern Duration is: {int(p_duration)}")
-    logger.info(f"Component Duration is: {int(c_duration)}")
-    logger.info(f"Brake Duration is: {int(b_duration)}")
-
-    logger.info(f"Pattern Percentile is: {int(p_duration) /2700:.2f}%")
-    logger.info(f"Component Percentile is: {int(c_duration) /2700:.2f}%")
-    logger.info(f"Brake Percentile is: {int(b_duration) /2700:.2f}%")
+	logger.info(f"Number of Switches including Breaks {categories_frame.shape[0]- 1}")
+	logger.info("-------------------------")
+	logger.info(f"Whole Eye Movements Duration is: {int(duration)}")
+	logger.info(f"Pattern Duration is: {int(p_duration)}")
+	logger.info(f"Component Duration is: {int(c_duration)}")
+	logger.info(f"Brake Duration is: {int(b_duration)}")
+	logger.info("-------------------------")
+	logger.info(f"Pattern share is: {(int(p_duration) / int(duration))* 100 :.2f}%")
+	logger.info(f"Component share is: {(int(c_duration) / int(duration))* 100 :.2f}%")
+	logger.info(f"Brake share is: {(int(b_duration) / int(duration))* 100 :.2f}%")
 
 if __name__ == "__main__":
 	main()

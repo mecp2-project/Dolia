@@ -63,5 +63,31 @@ def main():
 	logger.info(f"Component share is: {(int(c_duration) / int(duration))* 100 :.2f}%")
 	logger.info(f"Brake share is: {(int(b_duration) / int(duration))* 100 :.2f}%")
 
+	switches = 0
+	c_duration = 0
+	p_duration = 0
+	duration = 0
+	current_category = ""
+	
+	for _, [category, length] in categories_frame.iterrows():
+		if category == "B":
+			continue
+		if current_category != category:
+			switches += 1
+			current_category = category
+		duration += length
+		if category == "P":
+			p_duration += length
+		elif category == "C":
+			c_duration += length
+
+	logger.info("-------------------------")
+	logger.info("WITHOUT BREAKS")
+	logger.info(f"Pattern share is: {(int(p_duration) / int(duration))* 100 :.2f}%")
+	logger.info(f"Component share is: {(int(c_duration) / int(duration))* 100 :.2f}%")
+	logger.info(f"Number of Switches EXCLUDING Breaks {switches}")
+
+
+
 if __name__ == "__main__":
 	main()

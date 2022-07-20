@@ -1,12 +1,30 @@
 #!/usr/bin/env python3
 """
-The script takes Category File and computes the duration of each epoch (Patten(P), Component (C) or Break (B))
+The script takes Category File and computes the duration of each epoch (Patten (P), Component (C) or Break (B))
+USE MERGE FILE
 							 
 Inputs:
 	1. Category file
 Output:
-	1. Duration of P, C and B
-	2. Percentile of P, C and B
+	WHEN BREAKS ARE CONSIDERED CATEGORIES
+	1. Number of Switches
+	2. Duration of Eye Movements 
+	3. Pattern Duration
+	4. Break Duration
+	5. Component Duration
+	6. Pattern Share (in %)
+	7. Component Share (in %)
+	8. Break Share (in %)
+
+	WHEN BREAKS ARE NOT CONSIDERED CATEGORIES
+	1. Number of Switches
+	2. Duration of Eye Movements 
+	3. Pattern Duration
+	4. Component Duration
+	5. Pattern Share (in %)
+	6. Component Share (in %)
+	
+	
 """
 
 import argparse
@@ -43,25 +61,25 @@ def main():
 	b_duration = 0
 	duration = 0
 
-	for _, row in categories_frame.iterrows():
-		duration += row["1"]
-		if row["0"] == "P":
-			p_duration += row["1"]
-		elif row ["0"] == "C":
-			c_duration += row["1"]
+	for _, [category, length] in categories_frame.iterrows():
+		duration += length
+		if category == "P":
+			p_duration += length
+		elif category == "C":
+			c_duration += length
 		else:
-			b_duration += row["1"]
+			b_duration += length
 	
 	logger.info(f"Number of Switches including Breaks {categories_frame.shape[0]- 1}")
 	logger.info("-------------------------")
 	logger.info(f"Whole Eye Movements Duration is: {int(duration)}")
 	logger.info(f"Pattern Duration is: {int(p_duration)}")
 	logger.info(f"Component Duration is: {int(c_duration)}")
-	logger.info(f"Brake Duration is: {int(b_duration)}")
+	logger.info(f"Break Duration is: {int(b_duration)}")
 	logger.info("-------------------------")
 	logger.info(f"Pattern share is: {(int(p_duration) / int(duration))* 100 :.2f}%")
 	logger.info(f"Component share is: {(int(c_duration) / int(duration))* 100 :.2f}%")
-	logger.info(f"Brake share is: {(int(b_duration) / int(duration))* 100 :.2f}%")
+	logger.info(f"Break share is: {(int(b_duration) / int(duration))* 100 :.2f}%")
 
 	switches = 0
 	c_duration = 0
@@ -83,9 +101,16 @@ def main():
 
 	logger.info("-------------------------")
 	logger.info("WITHOUT BREAKS")
+	logger.info("-------------------------")
+	logger.info(f"Number of Switches EXCLUDING Breaks {switches}")
+	logger.info("-------------------------")
+	logger.info(f"Whole Eye Movements Duration is: {int(duration)}")
+	logger.info(f"Pattern Duration is: {int(p_duration)}")
+	logger.info(f"Component Duration is: {int(c_duration)}")
+	logger.info("-------------------------")
 	logger.info(f"Pattern share is: {(int(p_duration) / int(duration))* 100 :.2f}%")
 	logger.info(f"Component share is: {(int(c_duration) / int(duration))* 100 :.2f}%")
-	logger.info(f"Number of Switches EXCLUDING Breaks {switches}")
+	
 
 
 

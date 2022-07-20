@@ -71,7 +71,7 @@ def split_components(angle, plus_std, minus_std):
 		return "C2"
 	if angle < minus_std:
 		return "C1"	
-	return "P "
+	return "P"
 
 
 def merge_components(angle, plus_std, minus_std):

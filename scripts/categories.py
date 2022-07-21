@@ -7,7 +7,7 @@ Merge Epochs:
 			 Component 1 and Cmponent 2 will be considered the same epoch ===> Component (C).
 Split Epochs:
 			Component 1 (Value smaller than MEAN - STD) will be marked as C1
-			Component 2 (Value Greater than MEAN + STD) will be marked as C2							 
+			Component 2 (Value Greater than MEAN + STD) will be marked as C2
 
 Inputs:
 	1. Angles file
@@ -111,7 +111,6 @@ def main():
 
 	logger.info(category_frame)
 	logger.info(f"Categories computed and written to {category_file}")
-	logger.info(f" Number of Switches including Breaks {category_frame.shape[0]- 1}")
 
 
 	#plt.hist(

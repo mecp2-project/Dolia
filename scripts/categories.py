@@ -49,11 +49,13 @@ def parse_cli():
 def compute_epochs(angles_frame, plus_std, minus_std, get_category):
 	current_category = ""
 	current_epoch_length = 0
+	current_start = 0
 	epochs = []
 	for _, row in angles_frame.iterrows():
 		category = get_category(row["angle"], plus_std, minus_std)
 		if current_category == category and row["interval"] < MAX_INTERVAL:
 			current_epoch_length += int(row["length"])
+			current_start == row["start"]
 		else:
 			if current_category != "":
 				epochs += [[current_category, current_epoch_length]]
@@ -84,7 +86,7 @@ def main():
 
 	angles_file, category_file, bins, plus_std, minus_std  = parse_cli()
 
-	angles_frame = pd.read_csv(angles_file, usecols=["length", "angle", "interval"])
+	angles_frame = pd.read_csv(angles_file, usecols=["start","length", "angle", "interval"])
 
 	split_epochs = compute_epochs(
 		angles_frame,
@@ -102,8 +104,8 @@ def main():
 		merge_components,
 	)
 
-	for category, length in merge_epochs:
-		logger.info(f"{category}: {length}")
+	for start, end, category, length in merge_epochs:
+		logger.info(f"{start}: {category}: {length}")
 
 	
 	category_frame = pd.DataFrame(merge_epochs)

@@ -1,3 +1,4 @@
-*.csv
+clean/**/*.csv
+demo/*.csv
 __pycache__
 *.svg

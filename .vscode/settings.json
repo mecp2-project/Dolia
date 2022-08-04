@@ -20,6 +20,7 @@
         "tolist",
         "xlabel",
         "yapf",
-        "ylabel"
+        "ylabel",
+		"stds"
     ]
 }

@@ -2,3 +2,5 @@ clean/**/*.csv
 demo/*.csv
 __pycache__
 *.svg
+regenerate-categories.sh
+categories.log

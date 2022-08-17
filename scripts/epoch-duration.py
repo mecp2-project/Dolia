@@ -54,7 +54,7 @@ def parse_cli():
 def main():
 
 	category_file = parse_cli()
-	categories_frame = pd.read_csv(category_file, usecols=["0", "1"])
+	categories_frame = pd.read_csv(category_file, usecols=["category", "length"])
 
 	p_duration = 0
 	c_duration = 0

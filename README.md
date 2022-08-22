@@ -15,12 +15,12 @@ Later put a link to bioarxiv.
 
 ## How to run
 
-### Sanitize raw inputs
+### Sanitize raw inputs (Sanitizer.py)
 
 We expect raw inputs from DeepLabCut in CSV format.
 The script below parses these raw data and does the following:
 - Trims data
-    - trims low likellihood
+    - trims low likelihood
     - trims data outside of percentiles
     - computes radii and areas of pupils and trims the outliers
 - Computes and outputs for each frame
@@ -59,7 +59,7 @@ optional arguments:
 Here is an example of running the script:
 
 ```
-❯ ./scripts/sanitizer.py --file ./sorted-videos/q118-rr/OKN_plaid_eye_0001DLC_resnet50_MassiveEyeOct27shuffle1_1030000.csv
+❯ ./scripts/sanitizer.py --file ./raw-videos/folder/raw-file-name.csv
 Sun, 21 Aug 2022 18:01:14 INFO     Parsed CSV (n = 542488)
 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 542488/542488 [00:38<00:00, 14028.94it/s]
 Sun, 21 Aug 2022 18:01:53 INFO     Converted to ellipses
@@ -67,9 +67,45 @@ Sun, 21 Aug 2022 18:01:53 INFO     Removed Radius Ratio Outliers
 Sun, 21 Aug 2022 18:01:54 INFO     Removed X Y Outliers
 Sun, 21 Aug 2022 18:01:54 INFO     Smoothed the plot
 Sun, 21 Aug 2022 18:01:54 INFO     Pupil area calculated and smoothed
-Sun, 21 Aug 2022 18:01:57 INFO     Written to CSV: /Users/daria/Desktop/auto-2/scripts/../clean/OKN_plaid_eye_0001DLC_resnet50_MassiveEyeOct27shuffle1_1030000_clean.csv
+Sun, 21 Aug 2022 18:01:57 INFO     Written to CSV: /Users/Desktop/scripts/../clean/file-name_clean.csv 
 ```
 
-### For each script
+### Interactive
+
+```
+Interactive plots that let user semi-manually select peaks
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --data-file DATA_FILE
+                        path to CSV data file to read
+  --peaks-file PEAKS_FILE
+                        path to YAML peaks file; if exists, will read, else will create
+  --plus-std PLUS_STD   Highest peak plus 2 standard deviations
+  --minus-std MINUS_STD
+                        Highest peak minus 2 standard deviations
+  --view-area           show pupil radius as a third plot; will disable marking functionality, but not zooming and walking;
+  --view-ratio          show pupil radii ratio as a third plot; will disable marking functionality, but not zooming and walking;
+  -v                    increase output verbosity
+
+Example:
+        ./interactive.py --data-file ./clean.csv --peaks-file ./peaks.yaml -v
+
+        ./interactive.py --data-file ./clean.csv --peaks-file ./peaks.yaml -v --view-area
+        ./interactive.py --data-file ./clean.csv --peaks-file ./peaks.yaml -v --view-ratio
+
+Keys:
+        "q" : close the window, save all peaks
+        "left"/"right" : move zoom window left and right
+        "i"/"o" : zoom in and out (2x)
+        Hold "alt" : while holding, current peak selection (red dot) will NOT snap to suggested peaks
+        LEFT click to add/remove HIGH peak on the currently selected frame (red dot)
+        RIGHT click to add/remove LOW peak on the currently selected frame (red dot)
+        "z" : to add/remove last removed/added peak
+
+Notes:
+        At most one of --view-area and --view-ratio can be set
+        If --view-* is set, interactive marking of segments is disabled
+```
 
 ### For each script

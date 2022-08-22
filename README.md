@@ -108,7 +108,7 @@ Notes:
         If --view-* is set, interactive marking of segments is disabled
 ```
 Here is an example of running the script:
-    ![plot](./auto-2/interactive-example.png)
+    ![plot](./auto-2/scripts/interactive-example.png)
 
 
 ### For each script

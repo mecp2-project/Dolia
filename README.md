@@ -107,5 +107,8 @@ Notes:
         At most one of --view-area and --view-ratio can be set
         If --view-* is set, interactive marking of segments is disabled
 ```
+Here is an example of running the script:
+    ![plot](./auto-2/interactive-example.png)
+
 
 ### For each script

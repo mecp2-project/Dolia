@@ -103,6 +103,13 @@ def compute_segments(peaks_path):
 	return segments
 
 
+def linear_fit_angle(x, y):
+	length = len(x)
+	kx = np.polyfit([i for i in range(length)], x, 1)[0]
+	ky = np.polyfit([i for i in range(length)], y, 1)[0]
+	return np.degrees(np.arctan(ky / kx))
+
+
 def main():
 
 	data_file_path, peaks_file_path, angles_file_path = parse_cli()
@@ -121,7 +128,12 @@ def main():
 		segment_info["length"] = segment[1] - segment[0]
 		segment_info["delta_x"] = x1 - x0
 		segment_info["delta_y"] = y1 - y0
-		segment_info["angle"] = np.degrees(np.arctan((y1 - y0) / (x1 - x0)))
+		segment_info["original_angle"] = np.degrees(np.arctan((y1 - y0) / (x1 - x0)))
+
+		segment_info["angle"] = linear_fit_angle(
+			data_frame["x0"][segment[0]:segment[1]],
+			data_frame["y0"][segment[0]:segment[1]],
+		)
 
 		angles += [segment_info]
 

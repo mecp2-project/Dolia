@@ -75,6 +75,7 @@ Sun, 21 Aug 2022 18:01:57 INFO     Written to CSV: /Users/Desktop/scripts/../cle
 ```
 Interactive plots that let user semi-manually select peaks
 
+❯ ./scripts/interactive.py -h 
 optional arguments:
   -h, --help            show this help message and exit
   --data-file DATA_FILE
@@ -120,6 +121,7 @@ And Peaks data in .YAML format from `interactive.py`
 The Output will be Angles file in .CSV format
 
 ```
+❯ ./scripts/angles.py -h  
 usage: angles.py [-h] [-v] --data-file DATA_FILE --peaks-file PEAKS_FILE --angles-file ANGLES_FILE
 
 Angles -- processes data na peak files for one experiment extracting segment info including angles
@@ -138,11 +140,87 @@ optional arguments:
 Here is an example of running this script:
 
 ```
-./scripts/angles.py --data-file ./clean/file-name-clean.csv --peaks-file ./peaks/file-name-peaks.yaml --angles-file ./angles/filename-angles.csv
+ ❯ ./scripts/angles.py --data-file ./clean/file-name-clean.csv --peaks-file ./peaks/file-name-peaks.yaml --angles-file ./angles/filename-angles.csv
  		INFO Original horizontal segments: 89
         INFO Original vertical segments: 30
         INFO Resulting segments: 94
         INFO Angles computed and written to angles/file-name-angles.csv
 ```
+### Categories
 
+The script takes Angles file and based on the Angle and the brackets determines which category (Component (C) or Pattern (P)) it belongs to.
+If the distance between two eye movements is greater than 300 frames (defined as MAX_INTERVAL, can be changed if needed), this period will be considered a break (B).
+There are two options of running the script: 
+You can either `Merge Epochs`--- this way Component 1 and Component 2 will be considered the same epoch ===> Component (C).
+You cat also use `Split Epochs` and consider Component 1 (Value smaller than MEAN - STD) and Component 2 (Value Greater than MEAN + STD) separate epochs.
+
+We expect the following input:
+
+	1. Angles file in .CSV Format
+	2. Calculated standard deviation (Plus / Minus Std)
+	3. Name of Category file
+
+The output will be File in .CSV Format that contains Categories and Lengths of these categories.
+
+```
+❯ ./scripts/categories.py -h                                                                                                                        13:56:19
+usage: categories.py [-h] [-v] [--bins BINS] --mode MODE --angles-file ANGLES_FILE --category-file CATEGORY_FILE --plus-std PLUS_STD --minus-std MINUS_STD
+
+Histograms -- plot a single or double histogram
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v                    increase output verbosity
+  --bins BINS           The number of bins for the histogram.
+  --mode MODE           The mode: 'merge' or 'split'.
+  --angles-file ANGLES_FILE
+                        path to Angles CSV file to read (if supplied, will plot the distribution of pursuit durations).
+  --category-file CATEGORY_FILE
+                        path to a CSV categories file to write.
+  --plus-std PLUS_STD   Highest peak plus standard deviation
+  --minus-std MINUS_STD
+                        Highest peak minus standard deviation
+```		
+Here is an example of running this script:
+
+MERGE OPTION 
+```
+❯ ./scripts/categories.py --angles-file ./angles/lum-lizardb-angles/file-name-angles.csv --plus-std  31.14  --minus-std -10.66 --category-file ./categories/file-name-merge.csv --mode merge
+
+   category   start   length
+0         B     420    420.0
+1         P     420   2821.0
+2         B    4337    821.0
+3         P    4337    734.0
+4         C    5181     47.0
+..      ...     ...      ...
+69        P  215072   3873.0
+70        B  227875   8930.0
+71        P  227875   3153.0
+72        B  242648  11620.0
+73        P  242648   6333.0
+
+[74 rows x 3 columns]
+INFO Categories computed and written to categories/file-name-category/merge/file-name-merge.csv
+```
+SPLIT OPTION 
+```
+❯ ./scripts/categories.py --angles-file ./angles/file-name-angles.csv --plus-std  31.14  --minus-std -10.66 --category-file ./categories/file-name-category/split/file-name-split.csv --mode split
+
+   category   start  length
+0         B     409   409.0
+1        C2     409   137.0
+2         P     574  7688.0
+3         B    9786   363.0
+4        C1    9786    86.0
+..      ...     ...     ...
+79       C2  260639   341.0
+80        P  261056  5486.0
+81       C1  267204   337.0
+82       C2  267610  1320.0
+83        P  269029  1380.0
+
+[84 rows x 3 columns]
+INFO Categories computed and written to categories/file-name-category/split/file-name-split.csv
+```
 ### For each script

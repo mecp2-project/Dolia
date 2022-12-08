@@ -72,9 +72,10 @@ Sun, 21 Aug 2022 18:01:57 INFO     Written to CSV: /Users/Desktop/scripts/../cle
 ```
 
 ### Interactive
+Interactive plots that let user semi-manually select peaks.
+Make sure to select both top and bottom peak.
 
 ```
-Interactive plots that let user semi-manually select peaks
 
 ❯ ./scripts/interactive.py -h 
 optional arguments:

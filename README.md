@@ -150,9 +150,11 @@ Here is an example of running this script:
 
 The script takes Angles file and based on the Angle and the brackets determines which category (Component (C) or Pattern (P)) it belongs to.
 If the distance between two eye movements is greater than 300 frames (defined as MAX_INTERVAL, can be changed if needed), this period will be considered a break (B).
-There are two options of running the script: 
+
+There are two possible modes of running the script: 
 You can either `Merge Epochs`--- this way Component 1 and Component 2 will be considered the same epoch ===> Component (C).
-You cat also use `Split Epochs` and consider Component 1 (Value smaller than MEAN - STD) and Component 2 (Value Greater than MEAN + STD) separate epochs.
+
+You can also use `Split Epochs` and consider Component 1 (Value smaller than MEAN - STD) and Component 2 (Value Greater than MEAN + STD) separate epochs.
 
 We expect the following input:
 

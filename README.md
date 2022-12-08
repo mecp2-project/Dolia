@@ -109,7 +109,11 @@ Notes:
         If --view-* is set, interactive marking of segments is disabled
 ```
 Here is an example of running the script:
-    ![plot](./auto-2/scripts/interactive-example.png)
+   <img
+  src="/images/interactive-example.png"
+  alt="Interactive"
+  title="Semi-Automated peaks selection"
+  style="display: inline-block; margin: 0 auto; max-width: 300px">
 
 ### Angles
 
@@ -187,7 +191,7 @@ Here is an example of running this script:
 
 MERGE OPTION 
 ```
-❯ ./scripts/categories.py --angles-file ./angles/lum-lizardb-angles/file-name-angles.csv --plus-std  31.14  --minus-std -10.66 --category-file ./categories/file-name-merge.csv --mode merge
+❯ ./scripts/categories.py --angles-file ./angles/file-name-angles/file-name-angles.csv --plus-std  31.14  --minus-std -10.66 --category-file ./categories/file-name-merge.csv --mode merge
 
    category   start   length
 0         B     420    420.0
@@ -229,12 +233,12 @@ INFO Categories computed and written to categories/file-name-category/split/file
 ### Histograms
 
 A script to plot histograms based on the angles.
-Helps visualize your data
+Helps visualize your data as well as calculates some basic statistics
 
 The input needed is the Angles file in a .CSV format.
-You can also upload second angles file and compare two histograms.
+You can also upload second angles file and compare two histograms (WT and MECP2 Duplication mice in our case).
 
-Output is and .SVG file showing histogram plus statistical values such as mean, median, local maxima/minima and KDE
+Output is and .SVG file showing histogram and gives statistical values such as mean, median, local maxima/minima and KDE
 
 ```
 ❯ ./scripts/histograms.py -h                                                                                                                     14:07:28
@@ -262,3 +266,5 @@ INFO Read 356 Primary segments
 INFO Median is 12.32
 INFO Mean is 12.99
 ```
+
+Slava Ukraini! 

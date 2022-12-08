@@ -225,4 +225,40 @@ SPLIT OPTION
 [84 rows x 3 columns]
 INFO Categories computed and written to categories/file-name-category/split/file-name-split.csv
 ```
-### For each script
+
+### Histograms
+
+A script to plot histograms based on the angles.
+Helps visualize your data
+
+The input needed is the Angles file in a .CSV format.
+You can also upload second angles file and compare two histograms.
+
+Output is and .SVG file showing histogram plus statistical values such as mean, median, local maxima/minima and KDE
+
+```
+❯ ./scripts/histograms.py -h                                                                                                                     14:07:28
+usage: histograms.py [-h] [-v] [--bins BINS] [--highest_peak HIGHEST_PEAK] --angles-file ANGLES_FILE [--secondary-file SECONDARY_FILE] [--svg]
+
+Histograms -- plot a single or double histogram
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v                    increase output verbosity
+  --bins BINS           The number of bins for the histogram.
+  --highest_peak HIGHEST_PEAK
+                        Highest peak of the set. If supplied, program will compute switches using standard deviation.
+  --angles-file ANGLES_FILE
+                        path to a CSV angles file to read.
+  --secondary-file SECONDARY_FILE
+                        path to a secondary CSV angles file to read (if supplied, will plot double histogram).
+  --svg                 save to SVG (double-histogram.svg in your current directory) instead of showing in a window
+```
+Here is an example of running this script:
+
+```
+❯ ./scripts/histograms.py --angles-file ./angles/file-name-angles/file-name-angles.csv          
+INFO Read 356 Primary segments
+INFO Median is 12.32
+INFO Mean is 12.99
+```

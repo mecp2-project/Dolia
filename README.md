@@ -1,13 +1,13 @@
 # Automation
 
 Welcome to our awesome project!
-We designed this software in order to efficiently analyze he data for our even more awesome paper!
+We designed this software in order to efficiently analyze the data for our even more awesome paper!
 
-BioRXiv Link: https://www.biorxiv.org/content/10.1101/2022.09.23.509144v1
+BioRXiv Link: https://doi.org/10.1101/2022.09.23.509144v1
 
-Our software takes raw CSV data from @DeepLabCut, sanitizes it by removing the outliers and smoothing.
-Afterwards, we interactively select peaks that correspond to Saccade part of OKN (Optokinetic Nystagmus).
-Next, we calculate the angles of eye movements, divide them in categories and perform statistical analysis.
+ - Our software takes raw CSV data from @DeepLabCut, sanitizes it by removing the outliers and smoothing.
+ - Afterwards, we interactively select peaks that correspond to Saccade part of OKN (Optokinetic Nystagmus).
+ - Next, we calculate the angles of eye movements, divide them in categories and perform statistical analysis.
 
 Everything explained above is done with this program only.
 ## Dependencies
@@ -17,7 +17,6 @@ Everything explained above is done with this program only.
 - Qt plugin (`brew install pyqt@5`)
 
 ## How to run
-
 ### Sanitize raw inputs (Sanitizer.py)
 
 We expect raw inputs from DeepLabCut in CSV format.
@@ -62,7 +61,7 @@ Here is an example of running the script:
 ```
 ❯ ./scripts/sanitizer.py --file ./raw-videos/folder/raw-file-name.csv
 Sun, 21 Aug 2022 18:01:14 INFO     Parsed CSV (n = 542488)
-100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 542488/542488 [00:38<00:00, 14028.94it/s]
+100%|██████████████████████████████████████████████████████| 542488/542488 [00:38<00:00, 14028.94it/s]
 Sun, 21 Aug 2022 18:01:53 INFO     Converted to ellipses
 Sun, 21 Aug 2022 18:01:53 INFO     Removed Radius Ratio Outliers
 Sun, 21 Aug 2022 18:01:54 INFO     Removed X Y Outliers
@@ -70,7 +69,6 @@ Sun, 21 Aug 2022 18:01:54 INFO     Smoothed the plot
 Sun, 21 Aug 2022 18:01:54 INFO     Pupil area calculated and smoothed
 Sun, 21 Aug 2022 18:01:57 INFO     Written to CSV: /Users/Desktop/scripts/../clean/file-name_clean.csv 
 ```
-
 ### Interactive
 Interactive plots that let user semi-manually select peaks.
 Make sure to select both top and bottom peak.
@@ -121,8 +119,8 @@ Here is an example of running the script:
 
 The script will calculate the angles of mice's eye movements.
 
-We expect input from `Sanitizer.py`. Clean data in a .CSV format
-And Peaks data in .YAML format from `interactive.py`
+We expect input from `sanitizer.py`. Clean data in a .CSV format
+And peaks data in .YAML format from `interactive.py`.
 
 The Output will be Angles file in .CSV format
 
@@ -146,6 +144,7 @@ optional arguments:
 Here is an example of running this script:
 
 ```
+
  ❯ ./scripts/angles.py --data-file ./clean/file-name-clean.csv --peaks-file ./peaks/file-name-peaks.yaml --angles-file ./angles/filename-angles.csv
  		INFO Original horizontal segments: 89
         INFO Original vertical segments: 30
@@ -158,7 +157,7 @@ The script takes Angles file and based on the Angle and the brackets determines 
 If the distance between two eye movements is greater than 300 frames (defined as MAX_INTERVAL, can be changed if needed), this period will be considered a break (B).
 
 There are two possible modes of running the script: 
-You can either `Merge Epochs`--- this way Component 1 and Component 2 will be considered the same epoch ===> Component (C).
+You can `Merge Epochs`--- this way Component 1 and Component 2 will be considered the same epoch ===> Component (C).
 
 You can also use `Split Epochs` and consider Component 1 (Value smaller than MEAN - STD) and Component 2 (Value Greater than MEAN + STD) separate epochs.
 
@@ -171,7 +170,7 @@ We expect the following input:
 The output will be File in .CSV Format that contains Categories and Lengths of these categories.
 
 ```
-❯ ./scripts/categories.py -h                                                                                                                        13:56:19
+❯ ./scripts/categories.py -h
 usage: categories.py [-h] [-v] [--bins BINS] --mode MODE --angles-file ANGLES_FILE --category-file CATEGORY_FILE --plus-std PLUS_STD --minus-std MINUS_STD
 
 Histograms -- plot a single or double histogram
@@ -240,10 +239,10 @@ Helps visualize your data as well as calculates some basic statistics
 The input needed is the Angles file in a .CSV format.
 You can also upload second angles file and compare two histograms (WT and MECP2 Duplication mice in our case).
 
-Output is and .SVG file showing histogram and gives statistical values such as mean, median, local maxima/minima and KDE
+Output is and .SVG file showing histogram and gives statistical values such as mean, median, local maxima/minima and KDE.
 
 ```
-❯ ./scripts/histograms.py -h                                                                                                                     14:07:28
+❯ ./scripts/histograms.py -h
 usage: histograms.py [-h] [-v] [--bins BINS] [--highest_peak HIGHEST_PEAK] --angles-file ANGLES_FILE [--secondary-file SECONDARY_FILE] [--svg]
 
 Histograms -- plot a single or double histogram

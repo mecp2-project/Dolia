@@ -109,7 +109,7 @@ Notes:
         If --view-* is set, interactive marking of segments is disabled
 ```
 Here is an example of running the script:
-   <img
+<img
   src="/images/interactive-example.png"
   alt="Interactive"
   title="Semi-Automated peaks selection"
@@ -266,5 +266,10 @@ INFO Read 356 Primary segments
 INFO Median is 12.32
 INFO Mean is 12.99
 ```
+<img
+  src="/images/histograms-example.png"
+  alt="Histograms"
+  title="Semi-Automated peaks selection"
+  style="display: inline-block; margin: 0 auto; max-width: 300px">
 
 Slava Ukraini! 

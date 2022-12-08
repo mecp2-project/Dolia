@@ -1,17 +1,20 @@
 # Automation
 
-Here what the project is.
-
-Put here a nice screenshot from interactive.
+Welcome to our awesome project!
+We designed this software in order to efficiently analyze he data for our even more awesome paper!
 
 BioRXiv Link: https://www.biorxiv.org/content/10.1101/2022.09.23.509144v1
 
+Our software takes raw CSV data from @DeepLabCut, sanitizes it by removing the outliers and smoothing.
+Afterwards, we interactively select peaks that correspond to Saccade part of OKN (Optokinetic Nystagmus).
+Next, we calculate the angles of eye movements, divide them in categories and perform statistical analysis.
+
+Everything explained above is done with this program only.
 ## Dependencies
 
 - python3
 - packages from requirement.txt (`/usr/bin/env python3 -m pip install -r requirements.txt`)
 - Qt plugin (`brew install pyqt@5`)
-- etc
 
 ## How to run
 
@@ -26,8 +29,6 @@ The script below parses these raw data and does the following:
 - Computes and outputs for each frame
     - x and y coordinates of center
     - radii of pupil ellipse
-    - TODO
-
 ```
 ❯ ./scripts/sanitizer.py -h
 usage: sanitizer.py [-h] --file FILE [--likelihood LIKELIHOOD] [--min-percentile MIN_PERCENTILE] [--max-percentile MAX_PERCENTILE]

@@ -137,11 +137,12 @@ optional arguments:
 ```
 Here is an example of running this script:
 
+```
 ./scripts/angles.py --data-file ./clean/file-name-clean.csv --peaks-file ./peaks/file-name-peaks.yaml --angles-file ./angles/filename-angles.csv
  		INFO Original horizontal segments: 89
         INFO Original vertical segments: 30
         INFO Resulting segments: 94
         INFO Angles computed and written to angles/file-name-angles.csv
-
+```
 
 ### For each script

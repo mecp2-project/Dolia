@@ -1,9 +1,11 @@
 {
     "python.formatting.provider": "yapf",
     "cSpell.words": [
+        "arctan",
         "bliting",
         "bokeh",
         "chdir",
+        "coloredlogs",
         "daria",
         "dname",
         "inplace",
@@ -11,16 +13,17 @@
         "MECP",
         "nrows",
         "palevioletred",
+        "polyfit",
         "pyplot",
         "quantile",
         "rlong",
         "rshort",
         "scipy",
         "sdds",
+        "stds",
         "tolist",
         "xlabel",
         "yapf",
-        "ylabel",
-		"stds"
+        "ylabel"
     ]
 }

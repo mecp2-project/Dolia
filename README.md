@@ -4,7 +4,7 @@ Here what the project is.
 
 Put here a nice screenshot from interactive.
 
-Later put a link to bioarxiv.
+BioRXiv Link: https://www.biorxiv.org/content/10.1101/2022.09.23.509144v1
 
 ## Dependencies
 
@@ -109,6 +109,39 @@ Notes:
 ```
 Here is an example of running the script:
     ![plot](./auto-2/scripts/interactive-example.png)
+
+### Angles
+
+The script will calculate the angles of mice's eye movements.
+
+We expect input from `Sanitizer.py`. Clean data in a .CSV format
+And Peaks data in .YAML format from `interactive.py`
+
+The Output will be Angles file in .CSV format
+
+```
+usage: angles.py [-h] [-v] --data-file DATA_FILE --peaks-file PEAKS_FILE --angles-file ANGLES_FILE
+
+Angles -- processes data na peak files for one experiment extracting segment info including angles
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v                    increase output verbosity
+  --data-file DATA_FILE
+                        path to a CSV data file to read.
+  --peaks-file PEAKS_FILE
+                        path to a YAML peaks file to read.
+  --angles-file ANGLES_FILE
+                        path to a CSV angles file to write.
+
+```
+Here is an example of running this script:
+
+./scripts/angles.py --data-file ./clean/file-name-clean.csv --peaks-file ./peaks/file-name-peaks.yaml --angles-file ./angles/filename-angles.csv
+ 		INFO Original horizontal segments: 89
+        INFO Original vertical segments: 30
+        INFO Resulting segments: 94
+        INFO Angles computed and written to angles/file-name-angles.csv
 
 
 ### For each script

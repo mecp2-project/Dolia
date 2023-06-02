@@ -52,6 +52,7 @@ def parse_cli():
 	# All input that is needed
 	parser = argparse.ArgumentParser(description="Sanitizer (drop low likelihood and high percentile, crop CSV, calculate locomotion")
 	parser.add_argument("--file", dest="file", type=lambda x: is_valid_file(parser, x), required=True, help="CSV file to read.")
+	parser.add_argument("--category-file", dest="category_file", type=lambda x: is_valid_file(parser, x), required=True, help="CSV file to read.")
 	parser.add_argument("-v", dest="verbose", default=False, help="increase output verbosity", action="store_true")
 
 	args = parser.parse_args()
@@ -62,14 +63,17 @@ def parse_cli():
 		datefmt='%a, %d %b %Y %H:%M:%S',
 	)
 
-	return args.file
+	return args.file, args.category_file
 
 
 def main():
 	import pandas as pd
 	import numpy as np
 
-	file = parse_cli()
+	file, category_file = parse_cli()
+	
+	category_frame = pd.read_csv(category_file)
+	logging.info(f"Parsed Category CSV (n = {len(category_frame.index)})")
 
 	frame = pd.read_csv(file, header=2)
 
@@ -113,25 +117,29 @@ def main():
 	logging.info(f"Found {len(movements)} movement windows")
 
 	total_frames = 0
+	switches_during_movement = 0
 
 	for start, end in movements:
 		logging.info(f"Movement [{start} : {end}] {end - start} frames")
 		total_frames += end - start
+		switches_during_movement += sum((category_frame["start"]/5 >= start) & (category_frame["start"]/5 < end))
 
 	logging.info(f"Total frames where mouse walks: {total_frames}")
+	logging.info(f"Switches occurred during locomotion: {switches_during_movement}")
+	# Calculate percentage of red lines during movement
+	total_switches = len(category_frame["start"])
+	percentage_during_movement = (switches_during_movement / total_switches) * 100
+
+	logging.info(f"Percentage of switches during movement: {percentage_during_movement}%")
 
 	ax = frame.iloc[:, C_LEFT_PAW_X].plot(label="Left Paw")
 	frame.iloc[:, C_RIGHT_PAW_X].plot(ax=ax, label="Right Paw")
+	[plt.axvline(start/5, linewidth=1, color='r') for start in category_frame["start"]]
 	plt.xlabel("Frames")
 	plt.ylabel("Pixels")
 	plt.legend()
 	
 	plt.show()
-
-
-
-	print(frame.iloc[:, [C_LEFT_PAW_X, C_LEFT_LIKELIHOOD, C_RIGHT_PAW_X, C_RIGHT_LIKELIHOOD]])
-
 
 if __name__ == "__main__":
 	main()

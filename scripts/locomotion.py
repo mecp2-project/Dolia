@@ -126,11 +126,11 @@ def main():
 
 	logging.info(f"Total frames where mouse walks: {total_frames}")
 	logging.info(f"Switches occurred during locomotion: {switches_during_movement}")
-	# Calculate percentage of red lines during movement
+	# Calculate percentage of switches during locomotion
 	total_switches = len(category_frame["start"])
 	percentage_during_movement = (switches_during_movement / total_switches) * 100
 
-	logging.info(f"Percentage of switches during movement: {percentage_during_movement}%")
+	logging.info(f"Percentage of switches during locomotion: {percentage_during_movement}%")
 
 	ax = frame.iloc[:, C_LEFT_PAW_X].plot(label="Left Paw")
 	frame.iloc[:, C_RIGHT_PAW_X].plot(ax=ax, label="Right Paw")

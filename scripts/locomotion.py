@@ -65,11 +65,13 @@ def parse_cli():
 
 	return args.file, args.category_file
 
-
+# This is the main function of the script. It loads and processes the data from the CSV files, 
+# identifies periods of movement, and creates a plot of the movement data.
 def main():
 	import pandas as pd
 	import numpy as np
 
+	# Parse the CSV files.
 	file, category_file = parse_cli()
 	
 	category_frame = pd.read_csv(category_file)
@@ -79,10 +81,12 @@ def main():
 
 	logging.info(f"Parsed CSV (n = {len(frame.index)})")
 
+	# Truncate the data to keep only the first 15 minutes.
 	frame = frame.truncate(after=KEEP_SECONDS * FRAME_RATE)
 
 	logging.info(f"Truncated frame (n = {len(frame.index)})")
 
+	# Process the data, setting low-likelihood points to NaN and removing high data higher than threshold percentile.
 	for c_likelihood, c_paw_x in [(C_LEFT_LIKELIHOOD, C_LEFT_PAW_X), (C_RIGHT_LIKELIHOOD, C_RIGHT_PAW_X)]:
 
 		frame.iloc[(frame.iloc[:, c_likelihood] < LIKELIHOOD_THRESHOLD), c_paw_x] = np.nan
@@ -132,14 +136,14 @@ def main():
 
 	logging.info(f"Percentage of switches during locomotion: {percentage_during_movement}%")
 
-	ax = frame.iloc[:, C_LEFT_PAW_X].plot(label="Left Paw")
-	frame.iloc[:, C_RIGHT_PAW_X].plot(ax=ax, label="Right Paw")
-	[plt.axvline(start/5, linewidth=1, color='r') for start in category_frame["start"]]
-	plt.xlabel("Frames")
-	plt.ylabel("Pixels")
-	plt.legend()
+	#ax = frame.iloc[:, C_LEFT_PAW_X].plot(label="Left Paw")
+	#frame.iloc[:, C_RIGHT_PAW_X].plot(ax=ax, label="Right Paw")
+	#[plt.axvline(start/5, linewidth=1, color='r') for start in category_frame["start"]]
+	#plt.xlabel("Frames")
+	#plt.ylabel("Pixels")
+	#plt.legend()
 	
-	plt.show()
+	#plt.show()
 
 if __name__ == "__main__":
 	main()

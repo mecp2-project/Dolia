@@ -141,7 +141,7 @@ def main():
 
 	ax = frame.iloc[:, C_LEFT_PAW_X].plot(label="Left Paw")
 	frame.iloc[:, C_RIGHT_PAW_X].plot(ax=ax, label="Right Paw")
-	#[plt.axvline(start/5, linewidth=1, color='r') for start in category_frame["start"]]		#if Category_file is not None -- uncomment
+	#[plt.axvline(start/5, linewidth=1, color='r') for start in category_frame["start"]]			#if Category_file is not None -- uncomment
 	plt.xlabel("Frames")
 	plt.ylabel("Pixels")
 	plt.legend()

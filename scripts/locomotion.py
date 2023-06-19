@@ -85,8 +85,10 @@ def main():
 
 	# Process the data, setting low-likelihood points to NaN and removing high data higher than threshold percentile.
 	for c_likelihood, c_paw_x in [(C_LEFT_LIKELIHOOD, C_LEFT_PAW_X), (C_RIGHT_LIKELIHOOD, C_RIGHT_PAW_X)]:
-
-		frame.iloc[(frame.iloc[:, c_likelihood] < LIKELIHOOD_THRESHOLD), c_paw_x] = np.nan
+		logging.info(f"C Likelihood is", c_likelihood)
+		logging.info(f"C Paw is",c_paw_x)
+		tmp = (frame.iloc [:, c_likelihood] < LIKELIHOOD_THRESHOLD)
+		frame.iloc[tmp, c_paw_x] = np.nan
 
 		frame.iloc[(frame.iloc[:, c_paw_x] > frame.iloc[:, c_paw_x].quantile(X_PERCENTILE)), c_paw_x] = np.nan
 

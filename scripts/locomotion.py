@@ -122,7 +122,7 @@ def main():
 	for start, end in movements:
 			logging.info(f"Movement [{start} : {end}] {end - start} frames")
 			total_frames += end - start
-
+ 
 	
 	switches_during_movement = 0
 

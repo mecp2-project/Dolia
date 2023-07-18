@@ -2,6 +2,7 @@
     "python.formatting.provider": "yapf",
     "cSpell.words": [
         "arctan",
+        "axvline",
         "bliting",
         "bokeh",
         "chdir",
@@ -12,7 +13,10 @@
         "eyeblink",
         "iloc",
         "inplace",
+        "interquartile",
         "iterrows",
+        "levelname",
+        "linewidth",
         "matplotlib",
         "MECP",
         "nrows",

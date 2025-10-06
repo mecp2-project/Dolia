@@ -3,7 +3,7 @@
 Welcome to our awesome project!
 We designed this software in order to efficiently analyze the data for our even more awesome paper!
 
-BioRXiv Link: https://doi.org/10.1101/2022.09.23.509144v1
+Published Paper Link:  https://doi.org/10.1523/ENEURO.0102-23.2023
 
  - Our software takes raw CSV data from @DeepLabCut, sanitizes it by removing the outliers and smoothing.
  - Afterwards, we interactively select peaks that correspond to Saccade part of OKN (Optokinetic Nystagmus).
